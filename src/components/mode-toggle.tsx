@@ -1,4 +1,4 @@
-import { Check, Moon, Sun } from '@phosphor-icons/react'
+import { Check, Moon, Sun } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -15,17 +15,20 @@ export function ModeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger render={<Button variant="outline" size="icon" />}>
-        <Sun className="size-4 scale-100 rotate-0 transition-all dark:scale-0 dark:-rotate-90" />
-        <Moon className="absolute size-4 scale-0 rotate-90 transition-all dark:scale-100 dark:rotate-0" />
-        <span className="sr-only">Toggle theme</span>
+        <Sun className="size-4 scale-100 rotate-0 transition-all motion-reduce:transition-none dark:scale-0 dark:-rotate-90" />
+        <Moon className="absolute size-4 scale-0 rotate-90 transition-all motion-reduce:transition-none dark:scale-100 dark:rotate-0" />
+        <span className="sr-only">Cambiar tema</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {(['light', 'dark', 'system'] as const).map((option) => (
-          <DropdownMenuItem key={option} onClick={() => setTheme(option)}>
-            <span className="capitalize">{option}</span>
-            {theme === option && <Check className="ml-auto" />}
-          </DropdownMenuItem>
-        ))}
+        {(['Claro', 'Oscuro', 'Sistema'] as const).map((label, index) => {
+          const option = (['light', 'dark', 'system'] as const)[index]
+          return (
+            <DropdownMenuItem key={option} onClick={() => setTheme(option)}>
+              <span>{label}</span>
+              {theme === option && <Check className="ml-auto" />}
+            </DropdownMenuItem>
+          )
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   )
