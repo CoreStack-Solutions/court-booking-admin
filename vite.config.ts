@@ -11,7 +11,7 @@ const config = defineConfig({
   plugins: [
     devtools(),
     tailwindcss(),
-    tanstackStart({ server: { preset: 'vercel' } }),
+    tanstackStart(),
     viteReact(),
   ],
 })
