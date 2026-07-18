@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { login } from '@/features/auth/auth'
+import { getAuthErrorCode, login } from '@/features/auth/auth'
 
 export const Route = createFileRoute('/login')({
   validateSearch: z.object({ redirect: z.string().optional() }),
@@ -50,8 +50,12 @@ function LoginPage() {
         },
       })
       await navigate({ href: destination })
-    } catch {
-      setError('El correo o la contraseña no son válidos')
+    } catch (caughtError) {
+      setError(
+        getAuthErrorCode(caughtError) === 'RATE_LIMITED'
+          ? 'Demasiados intentos. Prueba más tarde.'
+          : 'El correo o la contraseña no son válidos',
+      )
     } finally {
       setPending(false)
     }

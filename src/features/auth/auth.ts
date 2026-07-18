@@ -61,6 +61,16 @@ function parseInput<T>(schema: ZodType<T>, data: unknown) {
   return parsed.data
 }
 
+export function getAuthErrorCode(error: unknown) {
+  if (!error || typeof error !== 'object') return undefined
+  const value = error as {
+    code?: unknown
+    data?: { code?: unknown }
+  }
+  if (typeof value.code === 'string') return value.code
+  return typeof value.data?.code === 'string' ? value.data.code : undefined
+}
+
 function toSafeUser(
   user: Pick<
     typeof users.$inferSelect,
@@ -84,13 +94,23 @@ function isUniqueConstraint(error: unknown) {
 
 const loginWindowMs = 15 * 60 * 1000
 const loginMaxAttempts = 5
+const accountMaxAttempts = 20
 const loginBlockMs = 15 * 60 * 1000
 
 function loginAttemptKeys(email: string) {
-  const keys = [createHash('sha256').update(`account:${email}`).digest('hex')]
+  const keys = [
+    {
+      key: createHash('sha256').update(`account:${email}`).digest('hex'),
+      maxAttempts: accountMaxAttempts,
+    },
+  ]
   const address = getRequestHeader('x-real-ip')
-  if (address)
-    keys.push(createHash('sha256').update(`ip:${address}`).digest('hex'))
+  if (address) {
+    keys.push({
+      key: createHash('sha256').update(`ip:${address}`).digest('hex'),
+      maxAttempts: loginMaxAttempts,
+    })
+  }
   return keys
 }
 
@@ -107,11 +127,11 @@ function registerLoginAttempt(email: string, increment = false) {
     )
 
     let blocked = false
-    for (const key of keys) {
+    for (const bucket of keys) {
       const current = tx
         .select()
         .from(loginAttempts)
-        .where(eq(loginAttempts.attemptKey, key))
+        .where(eq(loginAttempts.attemptKey, bucket.key))
         .limit(1)
         .get()
 
@@ -121,7 +141,7 @@ function registerLoginAttempt(email: string, increment = false) {
       }
       if (
         current &&
-        current.attempts >= loginMaxAttempts &&
+        current.attempts >= bucket.maxAttempts &&
         now - current.windowStartedAt < loginWindowMs
       ) {
         blocked = true
@@ -133,7 +153,7 @@ function registerLoginAttempt(email: string, increment = false) {
         tx.insert(loginAttempts)
           .values({
             id: randomUUID(),
-            attemptKey: key,
+            attemptKey: bucket.key,
             windowStartedAt: now,
             attempts: 1,
             updatedAt: now,
@@ -156,19 +176,19 @@ function registerLoginAttempt(email: string, increment = false) {
         .set({
           attempts,
           blockedUntil:
-            attempts >= loginMaxAttempts ? now + loginBlockMs : null,
+            attempts >= bucket.maxAttempts ? now + loginBlockMs : null,
           updatedAt: now,
         })
         .where(eq(loginAttempts.id, current.id))
         .run()
-      if (attempts >= loginMaxAttempts) blocked = true
+      if (attempts >= bucket.maxAttempts) blocked = true
     }
     return blocked
   })
 }
 
 function clearLoginAttempts(email: string) {
-  const accountKey = loginAttemptKeys(email)[0]
+  const accountKey = loginAttemptKeys(email)[0]?.key
   db.transaction((tx) => {
     if (accountKey) {
       tx.delete(loginAttempts)
