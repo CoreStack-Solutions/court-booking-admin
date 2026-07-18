@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { and, asc, eq, isNull, lt, sql } from 'drizzle-orm'
+import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { getRequestHeader } from '@tanstack/react-start/server'
 import type { ZodType } from 'zod'
@@ -29,7 +29,15 @@ const authErrorMiddleware = createMiddleware({ type: 'function' }).server(
     try {
       return await next()
     } catch (error) {
-      if (error instanceof AppError) throw error
+      if (error instanceof AppError) {
+        if (error.code === 'INTERNAL_ERROR') {
+          console.error('auth server function failed', {
+            name: error.name,
+            requestId: error.requestId,
+          })
+        }
+        throw error
+      }
       const requestId = randomUUID()
       console.error('auth server function failed', {
         name: error instanceof Error ? error.name : 'UnknownError',
@@ -79,20 +87,24 @@ const loginMaxAttempts = 5
 const loginBlockMs = 15 * 60 * 1000
 
 function loginAttemptKeys(email: string) {
-  const address = getRequestHeader('x-real-ip') ?? 'unknown'
-  return [
-    createHash('sha256').update(`account:${email}`).digest('hex'),
-    createHash('sha256').update(`ip:${address}`).digest('hex'),
-  ]
+  const keys = [createHash('sha256').update(`account:${email}`).digest('hex')]
+  const address = getRequestHeader('x-real-ip')
+  if (address)
+    keys.push(createHash('sha256').update(`ip:${address}`).digest('hex'))
+  return keys
 }
 
-function registerLoginAttempt(email: string) {
+function registerLoginAttempt(email: string, increment = false) {
   const keys = loginAttemptKeys(email)
   const now = Date.now()
   return db.transaction((tx) => {
-    tx.delete(loginAttempts)
-      .where(lt(loginAttempts.updatedAt, now - loginWindowMs * 2))
-      .run()
+    tx.run(
+      sql`DELETE FROM login_attempts WHERE id IN (
+        SELECT id FROM login_attempts
+        WHERE updated_at < ${now - loginWindowMs * 2}
+        LIMIT 50
+      )`,
+    )
 
     let blocked = false
     for (const key of keys) {
@@ -107,6 +119,7 @@ function registerLoginAttempt(email: string) {
         blocked = true
         continue
       }
+      if (!increment) continue
 
       if (!current || now - current.windowStartedAt >= loginWindowMs) {
         tx.insert(loginAttempts)
@@ -183,12 +196,14 @@ export const login = createServerFn({ method: 'POST' })
     )
 
     if (!user || !passwordMatches) {
+      registerLoginAttempt(data.email, true)
       throw new AppError(
         'INVALID_CREDENTIALS',
         'El correo o la contraseña no son válidos',
       )
     }
     if (!user.isActive) {
+      registerLoginAttempt(data.email, true)
       throw new AppError('USER_INACTIVE', 'Tu usuario está inactivo')
     }
 

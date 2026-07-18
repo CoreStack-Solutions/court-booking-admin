@@ -94,7 +94,12 @@ export function assertSameOrigin() {
   const expectedProtocol = forwardedProtocol
     ? `${forwardedProtocol}:`
     : requestUrl.protocol
-  const originUrl = new URL(origin)
+  let originUrl: URL
+  try {
+    originUrl = new URL(origin)
+  } catch {
+    throw new AppError('FORBIDDEN', 'Origen de solicitud no válido')
+  }
   if (originUrl.host !== host || originUrl.protocol !== expectedProtocol) {
     throw new AppError('FORBIDDEN', 'Origen de solicitud no válido')
   }
