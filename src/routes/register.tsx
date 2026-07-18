@@ -6,56 +6,51 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InputPassword } from '@/components/ui/input-password'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { getAuthErrorCode, login } from '@/features/auth/auth'
 
-export const Route = createFileRoute('/login')({
-  validateSearch: z.object({ redirect: z.string().optional() }),
-  component: LoginPage,
+export const Route = createFileRoute('/register')({
+  component: RegisterPage,
 })
 
-function safeRedirect(value: string | undefined) {
-  if (!value) return '/'
-  try {
-    const destination = new URL(value, window.location.origin)
-    if (destination.origin !== window.location.origin) return '/'
-    return `${destination.pathname}${destination.search}${destination.hash}`
-  } catch {
-    return '/'
-  }
-}
-
-function LoginPage() {
+function RegisterPage() {
   const navigate = useNavigate()
-  const search = Route.useSearch()
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
   const [formData, setFormData] = useState({
+    name: '',
+    lastName: '',
     email: '',
     password: '',
-    rememberMe: false,
+    confirmPassword: '',
   });
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError('')
     setPending(true)
-    const destination = safeRedirect(search.redirect)
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Las contraseñas no coinciden')
+      setPending(false)
+      return
+    }
+    if (formData.password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres')
+      setPending(false)
+      return
+    }
 
     try {
-      await login({
-        data: {
-          email: formData.email,
-          password: formData.password,
-        },
-      })
-      await navigate({ href: destination })
+      // TODO: Implement backend registration logic
+      // await signUp({ ... })
+      
+      // Simulating a wait for UI purposes
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      alert('Registro no implementado en backend para usuarios públicos por ahora.')
+      
+      await navigate({ to: '/login' })
     } catch (caughtError) {
-      setError(
-        getAuthErrorCode(caughtError) === 'RATE_LIMITED'
-          ? 'Demasiados intentos. Prueba más tarde.'
-          : 'El correo o la contraseña no son válidos',
-      )
+      setError('Ocurrió un error al intentar registrarse')
     } finally {
       setPending(false)
     }
@@ -77,11 +72,11 @@ function LoginPage() {
           </div>
           <div className="space-y-4 text-primary-foreground">
             <div className="text-2xl font-bold">
-              Bienvenido a Central Padel
+              Únete a Central Padel
             </div>
             <p className="text-primary-foreground/80 max-w-md">
-              Inicia sesión para acceder a tu cuenta y comenzar a
-              gestionar tus canchas y reservas.
+              Crea tu cuenta y comienza a reservar canchas de
+              manera fácil y rápida.
             </p>
           </div>
         </div>
@@ -96,16 +91,51 @@ function LoginPage() {
             </div>
             <div className="space-y-2">
               <h1 className="text-2xl font-semibold text-foreground">
-                Bienvenido de nuevo
+                Crear cuenta
               </h1>
               <p className="text-sm text-muted-foreground">
-                Ingresa tus credenciales para acceder a la operación de Central Padel
+                Completa tus datos para registrarte
               </p>
             </div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name" className="text-foreground">
+                  Nombre
+                </Label>
+                <Input
+                  id="name"
+                  name="name"
+                  type="text"
+                  autoComplete="given-name"
+                  required
+                  placeholder="Juan"
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lastName" className="text-foreground">
+                  Apellido (opcional)
+                </Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  autoComplete="family-name"
+                  placeholder="Pérez"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, lastName: e.target.value }))
+                  }
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-foreground">
                   Correo electrónico
@@ -119,75 +149,67 @@ function LoginPage() {
                   placeholder="tucorreo@ejemplo.com"
                   value={formData.email}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      email: e.target.value,
-                    }))
+                    setFormData((prev) => ({ ...prev, email: e.target.value }))
                   }
                 />
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-foreground">
-                    Contraseña
-                  </Label>
-                </div>
+                <Label htmlFor="password" className="text-foreground">
+                  Contraseña
+                </Label>
                 <InputPassword
                   id="password"
                   name="password"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   required
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      password: e.target.value,
-                    }))
+                    setFormData((prev) => ({ ...prev, password: e.target.value }))
                   }
                 />
+                <p className="text-xs text-muted-foreground">
+                  Mínimo 8 caracteres
+                </p>
               </div>
 
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="remember-me"
-                  checked={formData.rememberMe}
-                  onCheckedChange={(checked) =>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-foreground">
+                  Confirmar contraseña
+                </Label>
+                <InputPassword
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  autoComplete="new-password"
+                  required
+                  placeholder="••••••••"
+                  value={formData.confirmPassword}
+                  onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      rememberMe: checked,
+                      confirmPassword: e.target.value,
                     }))
                   }
                 />
-                <Label
-                  htmlFor="remember-me"
-                  className="text-sm text-muted-foreground"
-                >
-                  Recordar mi sesión
-                </Label>
               </div>
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={pending}
-            >
-              {pending ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            <Button type="submit" className="w-full" disabled={pending}>
+              {pending ? 'Registrando...' : 'Crear cuenta'}
             </Button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-muted-foreground">
-              ¿No tienes una cuenta?{' '}
+              ¿Ya tienes una cuenta?{' '}
               <Link
-                to="/register"
+                to="/login"
                 className="font-medium text-primary hover:text-primary/80"
               >
-                Regístrate aquí
+                Inicia sesión
               </Link>
             </p>
           </div>
