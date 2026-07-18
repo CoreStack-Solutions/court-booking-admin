@@ -30,10 +30,17 @@ const authErrorMiddleware = createMiddleware({ type: 'function' }).server(
       return await next()
     } catch (error) {
       if (error instanceof AppError) throw error
+      const requestId = randomUUID()
       console.error('auth server function failed', {
         name: error instanceof Error ? error.name : 'UnknownError',
+        requestId,
       })
-      throw new AppError('INTERNAL_ERROR', 'No se pudo completar la solicitud')
+      throw new AppError(
+        'INTERNAL_ERROR',
+        'No se pudo completar la solicitud',
+        {},
+        requestId,
+      )
     }
   },
 )
@@ -139,9 +146,12 @@ function registerLoginAttempt(email: string) {
 }
 
 function clearLoginAttempts(email: string) {
+  const accountKey = loginAttemptKeys(email)[0]
   db.transaction((tx) => {
-    for (const key of loginAttemptKeys(email)) {
-      tx.delete(loginAttempts).where(eq(loginAttempts.attemptKey, key)).run()
+    if (accountKey) {
+      tx.delete(loginAttempts)
+        .where(eq(loginAttempts.attemptKey, accountKey))
+        .run()
     }
   })
 }

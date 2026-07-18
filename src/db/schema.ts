@@ -67,7 +67,10 @@ export const loginAttempts = sqliteTable(
     blockedUntil: integer('blocked_until', { mode: 'number' }),
     updatedAt: integer('updated_at', { mode: 'number' }).notNull(),
   },
-  (table) => [uniqueIndex('login_attempts_key_unique').on(table.attemptKey)],
+  (table) => [
+    uniqueIndex('login_attempts_key_unique').on(table.attemptKey),
+    index('login_attempts_updated_idx').on(table.updatedAt),
+  ],
 )
 
 export const auditLogs = sqliteTable(

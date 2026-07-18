@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { and, eq, gt, isNull } from 'drizzle-orm'
 import {
   deleteCookie,
+  getRequest,
   getRequestHeader,
   getCookie,
   setCookie,
@@ -86,7 +87,15 @@ export function assertSameOrigin() {
   if (!origin || !host) {
     throw new AppError('FORBIDDEN', 'Origen de solicitud no válido')
   }
-  if (new URL(origin).host !== host) {
+  const requestUrl = new URL(getRequest().url)
+  const forwardedProtocol = getRequestHeader('x-forwarded-proto')
+    ?.split(',')[0]
+    ?.trim()
+  const expectedProtocol = forwardedProtocol
+    ? `${forwardedProtocol}:`
+    : requestUrl.protocol
+  const originUrl = new URL(origin)
+  if (originUrl.host !== host || originUrl.protocol !== expectedProtocol) {
     throw new AppError('FORBIDDEN', 'Origen de solicitud no válido')
   }
 }
