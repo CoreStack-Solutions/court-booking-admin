@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { and, asc, eq, isNull, sql } from 'drizzle-orm'
-import { createServerFn } from '@tanstack/react-start'
+import { and, asc, eq, isNull, lt, sql } from 'drizzle-orm'
+import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import { getRequestHeader } from '@tanstack/react-start/server'
 import type { ZodType } from 'zod'
 
@@ -23,6 +23,20 @@ import type { SafeUser } from './auth.schema'
 
 const dummyPasswordHash =
   '$argon2id$v=19$m=19456,t=2,p=1$v8JqrQOSkLTLxExYctWz7Q$Tl2e2Ea26YIlSyeK9w+3XT7f/gPwCPDu0wacCv4NJhI'
+
+const authErrorMiddleware = createMiddleware({ type: 'function' }).server(
+  async ({ next }) => {
+    try {
+      return await next()
+    } catch (error) {
+      if (error instanceof AppError) throw error
+      console.error('auth server function failed', {
+        name: error instanceof Error ? error.name : 'UnknownError',
+      })
+      throw new AppError('INTERNAL_ERROR', 'No se pudo completar la solicitud')
+    }
+  },
+)
 
 function parseInput<T>(schema: ZodType<T>, data: unknown) {
   const parsed = schema.safeParse(data)
@@ -57,73 +71,88 @@ const loginWindowMs = 15 * 60 * 1000
 const loginMaxAttempts = 5
 const loginBlockMs = 15 * 60 * 1000
 
-function loginAttemptKey(email: string) {
-  const address =
-    getRequestHeader('x-forwarded-for')?.split(',')[0]?.trim() ??
-    getRequestHeader('x-real-ip') ??
-    'unknown'
-  return createHash('sha256').update(`${email}:${address}`).digest('hex')
+function loginAttemptKeys(email: string) {
+  const address = getRequestHeader('x-real-ip') ?? 'unknown'
+  return [
+    createHash('sha256').update(`account:${email}`).digest('hex'),
+    createHash('sha256').update(`ip:${address}`).digest('hex'),
+  ]
 }
 
 function registerLoginAttempt(email: string) {
-  const key = loginAttemptKey(email)
+  const keys = loginAttemptKeys(email)
   const now = Date.now()
   return db.transaction((tx) => {
-    const current = tx
-      .select()
-      .from(loginAttempts)
-      .where(eq(loginAttempts.attemptKey, key))
-      .limit(1)
-      .get()
+    tx.delete(loginAttempts)
+      .where(lt(loginAttempts.updatedAt, now - loginWindowMs * 2))
+      .run()
 
-    if (current?.blockedUntil && current.blockedUntil > now) return true
+    let blocked = false
+    for (const key of keys) {
+      const current = tx
+        .select()
+        .from(loginAttempts)
+        .where(eq(loginAttempts.attemptKey, key))
+        .limit(1)
+        .get()
 
-    if (!current || now - current.windowStartedAt >= loginWindowMs) {
-      tx.insert(loginAttempts)
-        .values({
-          id: randomUUID(),
-          attemptKey: key,
-          windowStartedAt: now,
-          attempts: 1,
-          updatedAt: now,
-        })
-        .onConflictDoUpdate({
-          target: loginAttempts.attemptKey,
-          set: {
+      if (current?.blockedUntil && current.blockedUntil > now) {
+        blocked = true
+        continue
+      }
+
+      if (!current || now - current.windowStartedAt >= loginWindowMs) {
+        tx.insert(loginAttempts)
+          .values({
+            id: randomUUID(),
+            attemptKey: key,
             windowStartedAt: now,
             attempts: 1,
-            blockedUntil: null,
             updatedAt: now,
-          },
-        })
-        .run()
-      return false
-    }
+          })
+          .onConflictDoUpdate({
+            target: loginAttempts.attemptKey,
+            set: {
+              windowStartedAt: now,
+              attempts: 1,
+              blockedUntil: null,
+              updatedAt: now,
+            },
+          })
+          .run()
+        continue
+      }
 
-    const attempts = current.attempts + 1
-    tx.update(loginAttempts)
-      .set({
-        attempts,
-        blockedUntil: attempts >= loginMaxAttempts ? now + loginBlockMs : null,
-        updatedAt: now,
-      })
-      .where(eq(loginAttempts.id, current.id))
-      .run()
-    return attempts >= loginMaxAttempts
+      const attempts = current.attempts + 1
+      tx.update(loginAttempts)
+        .set({
+          attempts,
+          blockedUntil: attempts > loginMaxAttempts ? now + loginBlockMs : null,
+          updatedAt: now,
+        })
+        .where(eq(loginAttempts.id, current.id))
+        .run()
+      if (attempts > loginMaxAttempts) blocked = true
+    }
+    return blocked
   })
 }
 
 function clearLoginAttempts(email: string) {
-  db.delete(loginAttempts)
-    .where(eq(loginAttempts.attemptKey, loginAttemptKey(email)))
-    .run()
+  db.transaction((tx) => {
+    for (const key of loginAttemptKeys(email)) {
+      tx.delete(loginAttempts).where(eq(loginAttempts.attemptKey, key)).run()
+    }
+  })
 }
 
 export const login = createServerFn({ method: 'POST' })
+  .middleware([authErrorMiddleware])
   .validator((data) =>
     parseInput<ReturnType<typeof loginSchema.parse>>(loginSchema, data),
   )
   .handler(async ({ data }) => {
+    assertSameOrigin()
     if (registerLoginAttempt(data.email)) {
       throw new AppError(
         'RATE_LIMITED',
@@ -195,28 +224,33 @@ export const login = createServerFn({ method: 'POST' })
     return { user: toSafeUser(result.user) }
   })
 
-export const logout = createServerFn({ method: 'POST' }).handler(async () => {
-  assertSameOrigin()
-  await revokeCurrentSession()
-  return { ok: true as const }
-})
+export const logout = createServerFn({ method: 'POST' })
+  .middleware([authErrorMiddleware])
+  .handler(async () => {
+    assertSameOrigin()
+    await revokeCurrentSession()
+    return { ok: true as const }
+  })
 
-export const getCurrentUser = createServerFn({ method: 'GET' }).handler(
-  async () => {
+export const getCurrentUser = createServerFn({ method: 'GET' })
+  .middleware([authErrorMiddleware])
+  .handler(async () => {
     const session = await getCurrentSession()
     return session ? { user: toSafeUser(session.user) } : null
-  },
-)
+  })
 
-export const listUsers = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await requireSession()
-  requireRole(session.user, ['admin'])
+export const listUsers = createServerFn({ method: 'GET' })
+  .middleware([authErrorMiddleware])
+  .handler(async () => {
+    const session = await requireSession()
+    requireRole(session.user, ['admin'])
 
-  const result = await db.select().from(users).orderBy(asc(users.name))
-  return { users: result.map(toSafeUser) }
-})
+    const result = await db.select().from(users).orderBy(asc(users.name))
+    return { users: result.map(toSafeUser) }
+  })
 
 export const createUser = createServerFn({ method: 'POST' })
+  .middleware([authErrorMiddleware])
   .validator((data) =>
     parseInput<ReturnType<typeof createUserSchema.parse>>(
       createUserSchema,
@@ -285,6 +319,7 @@ export const createUser = createServerFn({ method: 'POST' })
   })
 
 export const updateUser = createServerFn({ method: 'POST' })
+  .middleware([authErrorMiddleware])
   .validator((data) =>
     parseInput<ReturnType<typeof updateUserSchema.parse>>(
       updateUserSchema,
@@ -367,7 +402,7 @@ export const updateUser = createServerFn({ method: 'POST' })
         .values({
           id: randomUUID(),
           actorUserId: session.user.id,
-        action: passwordChanged ? 'user.password_changed' : 'user.updated',
+          action: passwordChanged ? 'user.password_changed' : 'user.updated',
           entityType: 'user',
           entityId: updated.id,
           beforeJson: JSON.stringify(before),

@@ -82,10 +82,11 @@ export function createSession(userId: string) {
 
 export function assertSameOrigin() {
   const origin = getRequestHeader('origin')
-  const host =
-    getRequestHeader('x-forwarded-host')?.split(',')[0]?.trim() ??
-    getRequestHeader('host')
-  if (origin && host && new URL(origin).host !== host) {
+  const host = getRequestHeader('host')
+  if (!origin || !host) {
+    throw new AppError('FORBIDDEN', 'Origen de solicitud no válido')
+  }
+  if (new URL(origin).host !== host) {
     throw new AppError('FORBIDDEN', 'Origen de solicitud no válido')
   }
 }
