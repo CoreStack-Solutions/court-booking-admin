@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { and, eq, gt, isNull } from 'drizzle-orm'
 import {
   deleteCookie,
+  getRequestHeader,
   getCookie,
   setCookie,
 } from '@tanstack/react-start/server'
@@ -41,23 +42,52 @@ function hashToken(token: string) {
   return createHash('sha256').update(token).digest('hex')
 }
 
-export async function createSession(userId: string) {
+export function createSessionRecord(userId: string) {
   const now = Date.now()
   const token = randomBytes(32).toString('base64url')
 
-  await db.insert(sessions).values({
+  return {
     id: randomUUID(),
     userId,
     tokenHash: hashToken(token),
     expiresAt: now + sessionLifetimeSeconds * 1000,
     lastSeenAt: now,
     createdAt: now,
-  })
+    token,
+  }
+}
 
+export function setSessionCookie(token: string) {
   setCookie(sessionCookieName, token, {
     ...sessionCookieOptions,
     maxAge: sessionLifetimeSeconds,
   })
+}
+
+export function createSession(userId: string) {
+  const record = createSessionRecord(userId)
+  db.insert(sessions)
+    .values({
+      id: record.id,
+      userId: record.userId,
+      tokenHash: record.tokenHash,
+      expiresAt: record.expiresAt,
+      lastSeenAt: record.lastSeenAt,
+      createdAt: record.createdAt,
+    })
+    .run()
+
+  setSessionCookie(record.token)
+}
+
+export function assertSameOrigin() {
+  const origin = getRequestHeader('origin')
+  const host =
+    getRequestHeader('x-forwarded-host')?.split(',')[0]?.trim() ??
+    getRequestHeader('host')
+  if (origin && host && new URL(origin).host !== host) {
+    throw new AppError('FORBIDDEN', 'Origen de solicitud no válido')
+  }
 }
 
 export async function getCurrentSession(): Promise<AuthSession | null> {

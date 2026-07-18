@@ -29,6 +29,7 @@ export class AppError extends Error {
   ) {
     super(message)
     this.name = 'AppError'
+    this.stack = undefined
     this.code = code
     this.details = details
     this.requestId = requestId

@@ -57,6 +57,19 @@ export const sessions = sqliteTable(
   ],
 )
 
+export const loginAttempts = sqliteTable(
+  'login_attempts',
+  {
+    id: text('id').primaryKey(),
+    attemptKey: text('attempt_key').notNull(),
+    windowStartedAt: integer('window_started_at', { mode: 'number' }).notNull(),
+    attempts: integer('attempts').notNull(),
+    blockedUntil: integer('blocked_until', { mode: 'number' }),
+    updatedAt: integer('updated_at', { mode: 'number' }).notNull(),
+  },
+  (table) => [uniqueIndex('login_attempts_key_unique').on(table.attemptKey)],
+)
+
 export const auditLogs = sqliteTable(
   'audit_logs',
   {

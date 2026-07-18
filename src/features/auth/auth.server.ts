@@ -1,16 +1,19 @@
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { and, asc, eq, isNull, sql } from 'drizzle-orm'
 import { createServerFn } from '@tanstack/react-start'
+import { getRequestHeader } from '@tanstack/react-start/server'
 import type { ZodType } from 'zod'
 
-import { auditLogs, sessions, users } from '@/db/schema'
+import { auditLogs, loginAttempts, sessions, users } from '@/db/schema'
 import { db } from '@/lib/db.server'
 import {
-  createSession,
+  assertSameOrigin,
+  createSessionRecord,
   getCurrentSession,
   requireRole,
   requireSession,
   revokeCurrentSession,
+  setSessionCookie,
 } from '@/lib/auth.server'
 import { AppError, validationError } from '@/lib/errors'
 import { hashPassword, verifyPassword } from '@/lib/password.server'
@@ -50,11 +53,84 @@ function isUniqueConstraint(error: unknown) {
   )
 }
 
+const loginWindowMs = 15 * 60 * 1000
+const loginMaxAttempts = 5
+const loginBlockMs = 15 * 60 * 1000
+
+function loginAttemptKey(email: string) {
+  const address =
+    getRequestHeader('x-forwarded-for')?.split(',')[0]?.trim() ??
+    getRequestHeader('x-real-ip') ??
+    'unknown'
+  return createHash('sha256').update(`${email}:${address}`).digest('hex')
+}
+
+function registerLoginAttempt(email: string) {
+  const key = loginAttemptKey(email)
+  const now = Date.now()
+  return db.transaction((tx) => {
+    const current = tx
+      .select()
+      .from(loginAttempts)
+      .where(eq(loginAttempts.attemptKey, key))
+      .limit(1)
+      .get()
+
+    if (current?.blockedUntil && current.blockedUntil > now) return true
+
+    if (!current || now - current.windowStartedAt >= loginWindowMs) {
+      tx.insert(loginAttempts)
+        .values({
+          id: randomUUID(),
+          attemptKey: key,
+          windowStartedAt: now,
+          attempts: 1,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: loginAttempts.attemptKey,
+          set: {
+            windowStartedAt: now,
+            attempts: 1,
+            blockedUntil: null,
+            updatedAt: now,
+          },
+        })
+        .run()
+      return false
+    }
+
+    const attempts = current.attempts + 1
+    tx.update(loginAttempts)
+      .set({
+        attempts,
+        blockedUntil: attempts >= loginMaxAttempts ? now + loginBlockMs : null,
+        updatedAt: now,
+      })
+      .where(eq(loginAttempts.id, current.id))
+      .run()
+    return attempts >= loginMaxAttempts
+  })
+}
+
+function clearLoginAttempts(email: string) {
+  db.delete(loginAttempts)
+    .where(eq(loginAttempts.attemptKey, loginAttemptKey(email)))
+    .run()
+}
+
 export const login = createServerFn({ method: 'POST' })
   .validator((data) =>
     parseInput<ReturnType<typeof loginSchema.parse>>(loginSchema, data),
   )
   .handler(async ({ data }) => {
+    if (registerLoginAttempt(data.email)) {
+      throw new AppError(
+        'RATE_LIMITED',
+        'Demasiados intentos. Prueba más tarde',
+      )
+    }
+
     const user = await db
       .select()
       .from(users)
@@ -77,17 +153,50 @@ export const login = createServerFn({ method: 'POST' })
       throw new AppError('USER_INACTIVE', 'Tu usuario está inactivo')
     }
 
-    const now = Date.now()
-    await db
-      .update(users)
-      .set({ lastLoginAt: now, updatedAt: now })
-      .where(eq(users.id, user.id))
-    await createSession(user.id)
+    const result = db.transaction((tx) => {
+      const current = tx
+        .select()
+        .from(users)
+        .where(eq(users.id, user.id))
+        .limit(1)
+        .get()
+      if (
+        !current ||
+        !current.isActive ||
+        current.passwordHash !== user.passwordHash
+      ) {
+        throw new AppError(
+          'INVALID_CREDENTIALS',
+          'El correo o la contraseña no son válidos',
+        )
+      }
 
-    return { user: toSafeUser(user) }
+      const now = Date.now()
+      const session = createSessionRecord(current.id)
+      tx.update(users)
+        .set({ lastLoginAt: now, updatedAt: now })
+        .where(eq(users.id, current.id))
+        .run()
+      tx.insert(sessions)
+        .values({
+          id: session.id,
+          userId: session.userId,
+          tokenHash: session.tokenHash,
+          expiresAt: session.expiresAt,
+          lastSeenAt: session.lastSeenAt,
+          createdAt: session.createdAt,
+        })
+        .run()
+      return { user: current, token: session.token }
+    })
+
+    clearLoginAttempts(data.email)
+    setSessionCookie(result.token)
+    return { user: toSafeUser(result.user) }
   })
 
 export const logout = createServerFn({ method: 'POST' }).handler(async () => {
+  assertSameOrigin()
   await revokeCurrentSession()
   return { ok: true as const }
 })
@@ -115,6 +224,7 @@ export const createUser = createServerFn({ method: 'POST' })
     ),
   )
   .handler(async ({ data }) => {
+    assertSameOrigin()
     const session = await requireSession()
     requireRole(session.user, ['admin'])
     const requestId = randomUUID()
@@ -123,38 +233,43 @@ export const createUser = createServerFn({ method: 'POST' })
     const passwordHash = await hashPassword(data.password)
 
     try {
-      const safeUser = await db.transaction(async (tx) => {
-        await tx.insert(users).values({
-          id,
-          name: data.name,
-          email: data.email,
-          passwordHash,
-          role: data.role,
-          isActive: true,
-          createdAt: now,
-          updatedAt: now,
-        })
+      const safeUser = db.transaction((tx) => {
+        tx.insert(users)
+          .values({
+            id,
+            name: data.name,
+            email: data.email,
+            passwordHash,
+            role: data.role,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run()
 
-        const created = await tx
+        const created = tx
           .select()
           .from(users)
           .where(eq(users.id, id))
           .limit(1)
-        const user = created.at(0)
+          .get()
+        const user = created
         if (!user)
           throw new AppError('INTERNAL_ERROR', 'No se pudo crear el usuario')
 
         const safe = toSafeUser(user)
-        await tx.insert(auditLogs).values({
-          id: randomUUID(),
-          actorUserId: session.user.id,
-          action: 'user.created',
-          entityType: 'user',
-          entityId: id,
-          afterJson: JSON.stringify(safe),
-          createdAt: now,
-          requestId,
-        })
+        tx.insert(auditLogs)
+          .values({
+            id: randomUUID(),
+            actorUserId: session.user.id,
+            action: 'user.created',
+            entityType: 'user',
+            entityId: id,
+            afterJson: JSON.stringify(safe),
+            createdAt: now,
+            requestId,
+          })
+          .run()
         return safe
       })
       return { user: safeUser }
@@ -177,26 +292,27 @@ export const updateUser = createServerFn({ method: 'POST' })
     ),
   )
   .handler(async ({ data }) => {
+    assertSameOrigin()
     const session = await requireSession()
     requireRole(session.user, ['admin'])
     const requestId = randomUUID()
-    const current = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, data.id))
-      .limit(1)
-      .then((result) => result.at(0))
-
-    if (!current)
-      throw new AppError('USER_NOT_FOUND', 'No se encontró el usuario')
-
     const passwordChanged = data.password !== undefined
     const passwordHash =
       data.password === undefined
         ? undefined
         : await hashPassword(data.password)
     const now = Date.now()
-    const after = await db.transaction(async (tx) => {
+    const after = db.transaction((tx) => {
+      const current = tx
+        .select()
+        .from(users)
+        .where(eq(users.id, data.id))
+        .limit(1)
+        .get()
+      if (!current) {
+        throw new AppError('USER_NOT_FOUND', 'No se encontró el usuario')
+      }
+
       const nextRole = data.role ?? current.role
       const nextIsActive = data.isActive ?? current.isActive
       if (
@@ -204,11 +320,12 @@ export const updateUser = createServerFn({ method: 'POST' })
         current.isActive &&
         (nextRole !== 'admin' || !nextIsActive)
       ) {
-        const activeAdmins = await tx
-          .select({ count: sql<number>`count(*)` })
-          .from(users)
-          .where(and(eq(users.role, 'admin'), eq(users.isActive, true)))
-          .then((result) => Number(result.at(0)?.count ?? 0))
+        const activeAdmins =
+          tx
+            .select({ count: sql<number>`count(*)` })
+            .from(users)
+            .where(and(eq(users.role, 'admin'), eq(users.isActive, true)))
+            .get()?.count ?? 0
         if (activeAdmins <= 1) {
           throw new AppError(
             'LAST_ADMIN_REQUIRED',
@@ -223,40 +340,42 @@ export const updateUser = createServerFn({ method: 'POST' })
       if (data.isActive !== undefined) changes.isActive = data.isActive
       if (passwordHash !== undefined) changes.passwordHash = passwordHash
 
-      await tx.update(users).set(changes).where(eq(users.id, current.id))
+      tx.update(users).set(changes).where(eq(users.id, current.id)).run()
 
       if (passwordChanged || data.isActive === false) {
-        await tx
-          .update(sessions)
+        tx.update(sessions)
           .set({ revokedAt: now })
           .where(
             and(eq(sessions.userId, current.id), isNull(sessions.revokedAt)),
           )
+          .run()
       }
 
-      const updated = await tx
+      const updated = tx
         .select()
         .from(users)
         .where(eq(users.id, current.id))
         .limit(1)
-        .then((result) => result.at(0))
+        .get()
       if (!updated) {
         throw new AppError('INTERNAL_ERROR', 'No se pudo actualizar el usuario')
       }
 
       const before = toSafeUser(current)
       const safe = toSafeUser(updated)
-      await tx.insert(auditLogs).values({
-        id: randomUUID(),
-        actorUserId: session.user.id,
-        action: 'user.updated',
-        entityType: 'user',
-        entityId: updated.id,
-        beforeJson: JSON.stringify(before),
-        afterJson: JSON.stringify(safe),
-        createdAt: now,
-        requestId,
-      })
+      tx.insert(auditLogs)
+        .values({
+          id: randomUUID(),
+          actorUserId: session.user.id,
+        action: passwordChanged ? 'user.password_changed' : 'user.updated',
+          entityType: 'user',
+          entityId: updated.id,
+          beforeJson: JSON.stringify(before),
+          afterJson: JSON.stringify(safe),
+          createdAt: now,
+          requestId,
+        })
+        .run()
       return safe
     })
 
