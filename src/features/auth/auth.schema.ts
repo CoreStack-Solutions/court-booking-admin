@@ -21,13 +21,22 @@ export const createUserSchema = z.object({
   role: userRoleSchema,
 })
 
-export const updateUserSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string().trim().min(1).max(120).optional(),
-  role: userRoleSchema.optional(),
-  isActive: z.boolean().optional(),
-  password: passwordSchema.optional(),
-})
+export const updateUserSchema = z
+  .object({
+    id: z.string().uuid(),
+    name: z.string().trim().min(1).max(120).optional(),
+    role: userRoleSchema.optional(),
+    isActive: z.boolean().optional(),
+    password: passwordSchema.optional(),
+  })
+  .refine(
+    ({ name, role, isActive, password }) =>
+      name !== undefined ||
+      role !== undefined ||
+      isActive !== undefined ||
+      password !== undefined,
+    { message: 'Debes indicar al menos un cambio' },
+  )
 
 export type SafeUser = {
   id: string

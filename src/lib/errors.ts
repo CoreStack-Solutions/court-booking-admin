@@ -11,6 +11,7 @@ export const errorCodes = [
   'LAST_ADMIN_REQUIRED',
   'SESSION_EXPIRED',
   'RATE_LIMITED',
+  'INTERNAL_ERROR',
 ] as const
 
 export type ErrorCode = (typeof errorCodes)[number]
@@ -50,7 +51,7 @@ export function toAppError(error: unknown, requestId = randomUUID()) {
   if (error instanceof AppError) return error
 
   return new AppError(
-    'VALIDATION_ERROR',
+    'INTERNAL_ERROR',
     'No se pudo completar la solicitud',
     {},
     requestId,
