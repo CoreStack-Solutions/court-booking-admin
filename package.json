@@ -15,7 +15,7 @@
     "format": "prettier --write . && eslint --fix",
     "check": "prettier --check .",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrate.ts",
+    "db:migrate": "$HOME/.nvm/versions/node/v24.18.0/bin/node node_modules/.bin/tsx scripts/migrate.ts",
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
