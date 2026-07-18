@@ -67,7 +67,7 @@ function RegisterPage() {
         <div className="absolute inset-0 bg-black/60" />
         <div className="relative z-10 p-12 flex flex-col justify-between h-full text-card">
           <div className="text-primary-foreground">
-            <img src="/logo.png" alt="Central Padel Logo" className="h-12 w-auto object-contain" />
+            <img src="/images/logo-white.png" alt="Central Padel Logo" className="h-16 w-auto object-contain" />
           </div>
           <div className="space-y-4 text-primary-foreground">
             <div className="text-2xl font-bold">
@@ -86,7 +86,7 @@ function RegisterPage() {
         <div className="w-full max-w-md bg-card rounded-2xl shadow-sm border border-border p-8 sm:p-10">
           <div className="text-center mb-8 space-y-4">
             <div className="flex justify-center">
-              <img src="/logo.png" alt="Central Padel Logo" className="h-16 w-auto object-contain" />
+              <img src="/images/canchasapp_logo.png" alt="Central Padel Logo" className="h-16 w-auto object-contain" />
             </div>
             <div className="space-y-2">
               <h1 className="text-2xl font-semibold text-foreground">
