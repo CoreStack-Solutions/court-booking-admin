@@ -60,15 +60,14 @@ function RegisterPage() {
     <div className="min-h-screen flex bg-background">
       {/* Panel lateral con imagen */}
       <div className="hidden lg:flex w-1/2 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/90 to-primary/95">
-          <div
-            className="absolute inset-0 bg-[url('/images/bg-auth.png')] bg-cover bg-center"
-            aria-hidden="true"
-          />
-        </div>
+        <div
+          className="absolute inset-0 bg-[url('/images/bg-auth.png')] bg-cover bg-center"
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-black/60" />
         <div className="relative z-10 p-12 flex flex-col justify-between h-full text-card">
           <div className="text-primary-foreground">
-            <img src="/logo.png" alt="Central Padel Logo" className="h-12 w-auto object-contain brightness-0 invert" />
+            <img src="/logo.png" alt="Central Padel Logo" className="h-12 w-auto object-contain" />
           </div>
           <div className="space-y-4 text-primary-foreground">
             <div className="text-2xl font-bold">
