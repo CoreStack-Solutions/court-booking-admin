@@ -119,6 +119,14 @@ function registerLoginAttempt(email: string, increment = false) {
         blocked = true
         continue
       }
+      if (
+        current &&
+        current.attempts >= loginMaxAttempts &&
+        now - current.windowStartedAt < loginWindowMs
+      ) {
+        blocked = true
+        continue
+      }
       if (!increment) continue
 
       if (!current || now - current.windowStartedAt >= loginWindowMs) {
@@ -147,12 +155,13 @@ function registerLoginAttempt(email: string, increment = false) {
       tx.update(loginAttempts)
         .set({
           attempts,
-          blockedUntil: attempts > loginMaxAttempts ? now + loginBlockMs : null,
+          blockedUntil:
+            attempts >= loginMaxAttempts ? now + loginBlockMs : null,
           updatedAt: now,
         })
         .where(eq(loginAttempts.id, current.id))
         .run()
-      if (attempts > loginMaxAttempts) blocked = true
+      if (attempts >= loginMaxAttempts) blocked = true
     }
     return blocked
   })
