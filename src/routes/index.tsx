@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
   AlertCircle,
   ArrowRight,
@@ -65,8 +65,20 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
+import { getCurrentUser } from '@/features/auth/auth'
 
-export const Route = createFileRoute('/')({ component: Dashboard })
+export const Route = createFileRoute('/')({
+  beforeLoad: async ({ location }) => {
+    const current = await getCurrentUser()
+    if (!current) {
+      throw redirect({
+        href: `/login?redirect=${encodeURIComponent(location.href)}`,
+      })
+    }
+    return { user: current.user }
+  },
+  component: Dashboard,
+})
 
 const navItems = [
   { label: 'Resumen', icon: LayoutDashboard },

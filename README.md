@@ -36,10 +36,10 @@ pnpm db:seed
 ```
 
 The UI calls the typed server functions in
-`src/features/auth/auth.server.ts`: `login`, `logout`, `getCurrentUser`,
-`listUsers`, `createUser`, and `updateUser`. Use
-`requireAuthenticatedRoute` from `src/lib/auth.route.ts` in an authenticated
-route layout; server functions still enforce authentication independently.
+`src/features/auth/auth.ts`: `login`, `logout`, `getCurrentUser`,
+`listUsers`, `createUser`, and `updateUser`. Authenticated route layouts should
+call `getCurrentUser` from `beforeLoad`; server functions still enforce
+authentication independently.
 
 ## Styling
 
