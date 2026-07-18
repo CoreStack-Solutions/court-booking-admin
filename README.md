@@ -5,8 +5,8 @@ Welcome to your new TanStack Start app!
 To run this application:
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 # Building For Production
@@ -14,7 +14,7 @@ npm run dev
 To build this application for production:
 
 ```bash
-npm run build
+pnpm build
 ```
 
 ## Testing
@@ -22,8 +22,24 @@ npm run build
 This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
 
 ```bash
-npm run test
+pnpm test
 ```
+
+## Local Auth
+
+Copy `.env.example` to `.env`, then run the database migration and development
+seed with `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD` set:
+
+```bash
+pnpm db:migrate
+pnpm db:seed
+```
+
+The UI calls the typed server functions in
+`src/features/auth/auth.server.ts`: `login`, `logout`, `getCurrentUser`,
+`listUsers`, `createUser`, and `updateUser`. Use
+`requireAuthenticatedRoute` from `src/lib/auth.route.ts` in an authenticated
+route layout; server functions still enforce authentication independently.
 
 ## Styling
 
