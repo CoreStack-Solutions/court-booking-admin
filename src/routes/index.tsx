@@ -198,8 +198,8 @@ function SidebarContent({
   return (
     <>
       <div className="flex h-20 items-center gap-3 border-b px-5">
-        <div className="grid size-10 place-items-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-sm overflow-hidden p-1 bg-white">
-          <img src="/logo.png" alt="CanchasApp Logo" className="size-full object-contain" />
+        <div className="size-10 overflow-hidden rounded-lg shadow-sm">
+          <img src="/logo.png" alt="CanchasApp Logo" className="size-full object-cover" />
         </div>
         <div>
           <p className="text-base font-bold leading-none">CanchasApp</p>
