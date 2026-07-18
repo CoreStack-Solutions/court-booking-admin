@@ -18,7 +18,6 @@ import {
   Plus,
   Store,
   TrendingUp,
-  Trophy,
   Users,
   Wallet,
   X,
@@ -228,7 +227,11 @@ function SidebarContent({
     <>
       <div className="flex h-20 items-center gap-3 border-b px-5">
         <div className="size-10 overflow-hidden rounded-lg shadow-sm">
-          <img src="/logo.png" alt="CanchasApp Logo" className="size-full object-cover" />
+          <img
+            src="/logo.png"
+            alt="CanchasApp Logo"
+            className="size-full object-cover"
+          />
         </div>
         <div>
           <p className="text-base font-bold leading-none">CanchasApp</p>
