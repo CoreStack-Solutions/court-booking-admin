@@ -298,20 +298,7 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {
-        "users_name_not_empty": {
-          "name": "users_name_not_empty",
-          "value": "length(trim(\"users\".\"name\")) > 0"
-        },
-        "users_role_valid": {
-          "name": "users_role_valid",
-          "value": "\"users\".\"role\" in ('admin', 'operator', 'viewer')"
-        },
-        "users_is_active_boolean": {
-          "name": "users_is_active_boolean",
-          "value": "\"users\".\"is_active\" in (0, 1)"
-        }
-      }
+      "checkConstraints": {}
     }
   },
   "views": {},
