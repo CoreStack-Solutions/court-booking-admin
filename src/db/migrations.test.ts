@@ -104,13 +104,22 @@ describe('SQLite migrations', () => {
     )
 
     expect(() =>
-      applyMigrations(database, ['0001_cuddly_human_robot.sql']),
+      database.transaction(() =>
+        applyMigrations(database, ['0001_cuddly_human_robot.sql']),
+      )(),
     ).toThrow()
     expect(
       database.prepare('SELECT count(*) AS count FROM users').get(),
     ).toEqual({
       count: 2,
     })
+    expect(
+      database
+        .prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'users_email_unique'",
+        )
+        .get(),
+    ).toBeTruthy()
     database.close()
   })
 })

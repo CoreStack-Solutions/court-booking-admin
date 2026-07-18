@@ -27,8 +27,9 @@ pnpm test
 
 ## Local Auth
 
-Copy `.env.example` to `.env`, then run the database migration and development
-seed with `AUTH_ADMIN_EMAIL` and `AUTH_ADMIN_PASSWORD` set:
+Copy `.env.example` to `.env`, set `AUTH_ADMIN_EMAIL` and
+`AUTH_ADMIN_PASSWORD` (at least 12 characters), then run the database
+migration and development seed:
 
 ```bash
 pnpm db:migrate

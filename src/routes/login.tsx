@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -12,10 +13,14 @@ import {
 import { Input } from '@/components/ui/input'
 import { login } from '@/features/auth/auth'
 
-export const Route = createFileRoute('/login')({ component: LoginPage })
+export const Route = createFileRoute('/login')({
+  validateSearch: z.object({ redirect: z.string().optional() }),
+  component: LoginPage,
+})
 
 function LoginPage() {
   const navigate = useNavigate()
+  const search = Route.useSearch()
   const [error, setError] = useState('')
   const [pending, setPending] = useState(false)
 
@@ -32,7 +37,14 @@ function LoginPage() {
           password: String(form.get('password') ?? ''),
         },
       })
-      await navigate({ to: '/' })
+      const destination = search.redirect
+        ? new URL(search.redirect, window.location.origin)
+        : null
+      const href =
+        destination?.origin === window.location.origin
+          ? `${destination.pathname}${destination.search}${destination.hash}`
+          : '/'
+      await navigate({ href })
     } catch {
       setError('El correo o la contraseña no son válidos')
     } finally {
