@@ -12,8 +12,9 @@ import {
   ChevronRight,
   Clock,
   LayoutDashboard,
-  Menu,
   LogOut,
+  MapPin,
+  Menu,
   Package,
   Plus,
   Store,
@@ -86,6 +87,7 @@ const navSections = [
     items: [
       { label: 'Resumen', icon: LayoutDashboard },
       { label: 'Calendario', icon: CalendarDays, badge: '12' },
+      { label: 'Canchas', icon: MapPin },
       { label: 'Clientes', icon: Users },
       { label: 'Caja y reportes', icon: BarChart3 },
     ],
