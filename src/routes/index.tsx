@@ -13,9 +13,9 @@ import {
   Clock,
   LayoutDashboard,
   Menu,
+  LogOut,
   Package,
   Plus,
-  Settings,
   Store,
   TrendingUp,
   Trophy,
@@ -274,6 +274,8 @@ function SidebarContent({
       <div className="border-t p-3">
         <Button
           variant="ghost"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
           className="h-auto w-full justify-start gap-3 text-left text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           onClick={onLogout}
         >
@@ -288,7 +290,7 @@ function SidebarContent({
               {roleLabel}
             </span>
           </span>
-          <Settings
+          <LogOut
             className="size-4 text-sidebar-foreground/55"
             aria-hidden="true"
           />

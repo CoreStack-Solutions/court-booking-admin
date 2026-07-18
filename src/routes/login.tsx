@@ -18,6 +18,17 @@ export const Route = createFileRoute('/login')({
   component: LoginPage,
 })
 
+function safeRedirect(value: string | undefined) {
+  if (!value) return '/'
+  try {
+    const destination = new URL(value, window.location.origin)
+    if (destination.origin !== window.location.origin) return '/'
+    return `${destination.pathname}${destination.search}${destination.hash}`
+  } catch {
+    return '/'
+  }
+}
+
 function LoginPage() {
   const navigate = useNavigate()
   const search = Route.useSearch()
@@ -29,6 +40,7 @@ function LoginPage() {
     setError('')
     setPending(true)
     const form = new FormData(event.currentTarget)
+    const destination = safeRedirect(search.redirect)
 
     try {
       await login({
@@ -37,14 +49,7 @@ function LoginPage() {
           password: String(form.get('password') ?? ''),
         },
       })
-      const destination = search.redirect
-        ? new URL(search.redirect, window.location.origin)
-        : null
-      const href =
-        destination?.origin === window.location.origin
-          ? `${destination.pathname}${destination.search}${destination.hash}`
-          : '/'
-      await navigate({ href })
+      await navigate({ href: destination })
     } catch {
       setError('El correo o la contraseña no son válidos')
     } finally {
