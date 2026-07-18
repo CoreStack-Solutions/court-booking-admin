@@ -72,11 +72,11 @@ function LoginPage() {
         <div className="absolute inset-0 bg-black/60" />
         <div className="relative z-10 p-12 flex flex-col justify-between h-full text-card">
           <div className="text-primary-foreground">
-            <img src="/images/logo-white.png" alt="Central Padel Logo" className="h-16 w-auto object-contain" />
+            <img src="/images/logo-white.png" alt="CanchasApp Logo" className="h-16 w-auto object-contain" />
           </div>
           <div className="space-y-4 text-primary-foreground">
             <div className="text-2xl font-bold">
-              Bienvenido a Central Padel
+              Bienvenido a CanchasApp
             </div>
             <p className="text-primary-foreground/80 max-w-md">
               Inicia sesión para acceder a tu cuenta y comenzar a
@@ -91,14 +91,14 @@ function LoginPage() {
         <div className="w-full max-w-md bg-card rounded-2xl shadow-sm border border-border p-8 sm:p-10">
           <div className="text-center mb-8 space-y-4">
             <div className="flex justify-center">
-              <img src="/images/canchasapp_logo.png" alt="Central Padel Logo" className="h-16 w-auto object-contain" />
+              <img src="/images/canchasapp_logo.png" alt="CanchasApp Logo" className="h-16 w-auto object-contain" />
             </div>
             <div className="space-y-2">
               <h1 className="text-2xl font-semibold text-foreground">
                 Bienvenido de nuevo
               </h1>
               <p className="text-sm text-muted-foreground">
-                Ingresa tus credenciales para acceder a la operación de Central Padel
+                Ingresa tus credenciales para acceder a la operación de CanchasApp
               </p>
             </div>
           </div>
@@ -193,7 +193,7 @@ function LoginPage() {
 
           <div className="mt-8 border-t border-border pt-6">
             <p className="text-xs text-center text-muted-foreground">
-              © {new Date().getFullYear()} Central Padel. Todos los derechos reservados.
+              © {new Date().getFullYear()} CanchasApp. Todos los derechos reservados.
             </p>
           </div>
         </div>
