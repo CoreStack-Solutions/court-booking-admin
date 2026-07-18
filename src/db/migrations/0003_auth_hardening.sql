@@ -1,7 +1,7 @@
 DROP TRIGGER IF EXISTS `users_validate_insert`;--> statement-breakpoint
 DROP TRIGGER IF EXISTS `users_validate_update`;--> statement-breakpoint
 DROP INDEX `users_email_unique`;--> statement-breakpoint
-UPDATE `users` SET `email` = lower(`email`);--> statement-breakpoint
+UPDATE `users` SET `email` = lower(trim(`email`));--> statement-breakpoint
 CREATE UNIQUE INDEX `users_email_unique` ON `users` ("email" COLLATE NOCASE);--> statement-breakpoint
 CREATE TRIGGER `users_validate_update`
 BEFORE UPDATE OF name, role, is_active ON `users`
