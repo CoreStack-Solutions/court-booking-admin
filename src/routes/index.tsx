@@ -198,11 +198,11 @@ function SidebarContent({
   return (
     <>
       <div className="flex h-20 items-center gap-3 border-b px-5">
-        <div className="grid size-10 place-items-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
-          <Trophy className="size-5" aria-hidden="true" />
+        <div className="grid size-10 place-items-center rounded-xl bg-sidebar-primary text-sidebar-primary-foreground shadow-sm overflow-hidden p-1 bg-white">
+          <img src="/logo.png" alt="CanchasApp Logo" className="size-full object-contain" />
         </div>
         <div>
-          <p className="text-base font-bold leading-none">Central Padel</p>
+          <p className="text-base font-bold leading-none">CanchasApp</p>
           <p className="mt-1 text-xs text-sidebar-foreground/60">
             Centro deportivo
           </p>
