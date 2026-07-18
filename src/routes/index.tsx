@@ -80,13 +80,23 @@ export const Route = createFileRoute('/')({
   component: Dashboard,
 })
 
-const navItems = [
-  { label: 'Resumen', icon: LayoutDashboard },
-  { label: 'Calendario', icon: CalendarDays, badge: '12' },
-  { label: 'Clientes', icon: Users },
-  { label: 'Quiosco', icon: Store },
-  { label: 'Inventario', icon: Package, badge: '3' },
-  { label: 'Caja y reportes', icon: BarChart3 },
+const navSections = [
+  {
+    title: 'Negocio Core',
+    items: [
+      { label: 'Resumen', icon: LayoutDashboard },
+      { label: 'Calendario', icon: CalendarDays, badge: '12' },
+      { label: 'Clientes', icon: Users },
+      { label: 'Caja y reportes', icon: BarChart3 },
+    ],
+  },
+  {
+    title: 'Quiosco e Inventario',
+    items: [
+      { label: 'Quiosco', icon: Store },
+      { label: 'Inventario', icon: Package, badge: '3' },
+    ],
+  },
 ]
 
 const dates = [
@@ -241,36 +251,40 @@ function SidebarContent({
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 p-3" aria-label="Navegación principal">
-        <p className="px-3 pb-2 pt-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/45">
-          Operación
-        </p>
-        {navItems.map((item) => (
-          <Button
-            key={item.label}
-            variant="ghost"
-            className={cn(
-              'w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-              activeNav === item.label &&
-                'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
-            )}
-            onClick={() => onNavigate(item.label)}
-          >
-            <item.icon className="size-[1.1rem]" aria-hidden="true" />
-            {item.label}
-            {item.badge && (
-              <Badge
-                variant="secondary"
+      <nav className="flex-1 space-y-4 p-3" aria-label="Navegación principal">
+        {navSections.map((section) => (
+          <div key={section.title} className="space-y-1">
+            <p className="px-3 pb-2 pt-1 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/45">
+              {section.title}
+            </p>
+            {section.items.map((item) => (
+              <Button
+                key={item.label}
+                variant="ghost"
                 className={cn(
-                  'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
+                  'w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                   activeNav === item.label &&
-                    'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
+                    'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
                 )}
+                onClick={() => onNavigate(item.label)}
               >
-                {item.badge}
-              </Badge>
-            )}
-          </Button>
+                <item.icon className="size-[1.1rem]" aria-hidden="true" />
+                {item.label}
+                {item.badge && (
+                  <Badge
+                    variant="secondary"
+                    className={cn(
+                      'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
+                      activeNav === item.label &&
+                        'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
+                    )}
+                  >
+                    {item.badge}
+                  </Badge>
+                )}
+              </Button>
+            ))}
+          </div>
         ))}
       </nav>
 
