@@ -11,6 +11,8 @@ export const errorCodes = [
   'LAST_ADMIN_REQUIRED',
   'SESSION_EXPIRED',
   'RATE_LIMITED',
+  'COURT_NOT_FOUND',
+  'COURT_HOURS_CONFLICT',
   'INTERNAL_ERROR',
 ] as const
 

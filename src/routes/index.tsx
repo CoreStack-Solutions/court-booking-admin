@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { Link, createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import {
   AlertCircle,
   ArrowRight,
@@ -85,18 +85,18 @@ const navSections = [
   {
     title: 'Negocio Core',
     items: [
-      { label: 'Resumen', icon: LayoutDashboard },
-      { label: 'Calendario', icon: CalendarDays, badge: '12' },
-      { label: 'Canchas', icon: MapPin },
-      { label: 'Clientes', icon: Users },
-      { label: 'Caja y reportes', icon: BarChart3 },
+      { label: 'Resumen', icon: LayoutDashboard, href: undefined },
+      { label: 'Calendario', icon: CalendarDays, badge: '12', href: undefined },
+      { label: 'Canchas', icon: MapPin, href: '/courts' as const },
+      { label: 'Clientes', icon: Users, href: undefined },
+      { label: 'Caja y reportes', icon: BarChart3, href: undefined },
     ],
   },
   {
     title: 'Quiosco e Inventario',
     items: [
-      { label: 'Quiosco', icon: Store },
-      { label: 'Inventario', icon: Package, badge: '3' },
+      { label: 'Quiosco', icon: Store, href: undefined },
+      { label: 'Inventario', icon: Package, badge: '3', href: undefined },
     ],
   },
 ]
@@ -259,36 +259,53 @@ function SidebarContent({
             <p className="px-3 pb-2 pt-1 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/45">
               {section.title}
             </p>
-            {section.items.map((item) => (
-              <Button
-                key={item.label}
-                variant="ghost"
-                className={cn(
-                  'w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                  activeNav === item.label &&
-                    'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
-                )}
-                onClick={() => onNavigate(item.label)}
-              >
-                <item.icon className="size-[1.1rem]" aria-hidden="true" />
-                {item.label}
-                {item.badge && (
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
-                      activeNav === item.label &&
-                        'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
-                    )}
-                  >
-                    {item.badge}
-                  </Badge>
-                )}
-              </Button>
-            ))}
+            {section.items.map((item) =>
+              item.href ? (
+                <Link
+                  key={item.label}
+                  to={item.href}
+                  onClick={() => onNavigate(item.label)}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                    activeNav === item.label &&
+                      'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
+                  )}
+                >
+                  <item.icon className="size-[1.1rem]" aria-hidden="true" />
+                  {item.label}
+                </Link>
+              ) : (
+                <Button
+                  key={item.label}
+                  variant="ghost"
+                  className={cn(
+                    'w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                    activeNav === item.label &&
+                      'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
+                  )}
+                  onClick={() => onNavigate(item.label)}
+                >
+                  <item.icon className="size-[1.1rem]" aria-hidden="true" />
+                  {item.label}
+                  {item.badge && (
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
+                        activeNav === item.label &&
+                          'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
+                      )}
+                    >
+                      {item.badge}
+                    </Badge>
+                  )}
+                </Button>
+              ),
+            )}
           </div>
         ))}
       </nav>
+
 
       <div className="border-t p-3">
         <Button

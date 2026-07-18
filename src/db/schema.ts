@@ -8,9 +8,10 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 
-import { userRoles } from '@/lib/auth.constants'
+import { userRoles, courtStatuses } from '@/lib/auth.constants'
 
 export type { UserRole } from '@/lib/auth.constants'
+export type { CourtStatus } from '@/lib/auth.constants'
 
 export const users = sqliteTable(
   'users',
@@ -96,6 +97,53 @@ export const auditLogs = sqliteTable(
   ],
 )
 
+export const courts = sqliteTable(
+  'courts',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    color: text('color').notNull().default('#22c55e'),
+    status: text('status', { enum: courtStatuses }).notNull().default('active'),
+    sortOrder: integer('sort_order').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'number' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'number' }).notNull(),
+  },
+  (table) => [
+    index('courts_status_idx').on(table.status),
+    index('courts_sort_order_idx').on(table.sortOrder),
+    check('courts_name_not_empty', sql`length(trim(${table.name})) > 0`),
+    check(
+      'courts_status_valid',
+      sql`${table.status} in ('active', 'maintenance', 'inactive')`,
+    ),
+  ],
+)
+
+export const courtHours = sqliteTable(
+  'court_hours',
+  {
+    id: text('id').primaryKey(),
+    courtId: text('court_id')
+      .notNull()
+      .references(() => courts.id),
+    dayOfWeek: integer('day_of_week').notNull(),
+    opensAt: text('opens_at').notNull().default('07:00'),
+    closesAt: text('closes_at').notNull().default('22:00'),
+    isClosed: integer('is_closed', { mode: 'boolean' }).notNull().default(false),
+  },
+  (table) => [
+    index('court_hours_court_day_idx').on(table.courtId, table.dayOfWeek),
+    check(
+      'court_hours_day_valid',
+      sql`${table.dayOfWeek} between 0 and 6`,
+    ),
+    check(
+      'court_hours_is_closed_boolean',
+      sql`${table.isClosed} in (0, 1)`,
+    ),
+  ],
+)
+
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   auditLogs: many(auditLogs),
@@ -112,5 +160,16 @@ export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   actor: one(users, {
     fields: [auditLogs.actorUserId],
     references: [users.id],
+  }),
+}))
+
+export const courtsRelations = relations(courts, ({ many }) => ({
+  courtHours: many(courtHours),
+}))
+
+export const courtHoursRelations = relations(courtHours, ({ one }) => ({
+  court: one(courts, {
+    fields: [courtHours.courtId],
+    references: [courts.id],
   }),
 }))
