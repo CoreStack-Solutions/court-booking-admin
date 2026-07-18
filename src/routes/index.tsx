@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import {
   AlertCircle,
   ArrowRight,
@@ -65,7 +65,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
-import { getCurrentUser } from '@/features/auth/auth'
+import { getCurrentUser, logout } from '@/features/auth/auth'
+import type { SafeUser } from '@/features/auth/auth.schema'
 
 export const Route = createFileRoute('/')({
   beforeLoad: async ({ location }) => {
@@ -203,10 +204,26 @@ const activity = [
 function SidebarContent({
   activeNav,
   onNavigate,
+  onLogout,
+  user,
 }: {
   activeNav: string
   onNavigate: (label: string) => void
+  onLogout: () => void
+  user: SafeUser
 }) {
+  const roleLabel = {
+    admin: 'Administrador',
+    operator: 'Operador',
+    viewer: 'Lector',
+  }[user.role]
+  const initials = user.name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+
   return (
     <>
       <div className="flex h-20 items-center gap-3 border-b px-5">
@@ -258,16 +275,17 @@ function SidebarContent({
         <Button
           variant="ghost"
           className="h-auto w-full justify-start gap-3 text-left text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          onClick={onLogout}
         >
           <span className="grid size-9 place-items-center rounded-full bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground">
-            FV
+            {initials}
           </span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold">
-              Fernando Vega
+              {user.name}
             </span>
             <span className="block text-xs text-sidebar-foreground/55">
-              Administrador
+              {roleLabel}
             </span>
           </span>
           <Settings
@@ -281,12 +299,19 @@ function SidebarContent({
 }
 
 function Dashboard() {
+  const navigate = useNavigate()
+  const user = Route.useRouteContext().user
   const [activeNav, setActiveNav] = useState('Resumen')
   const [dateIndex, setDateIndex] = useState(1)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [reservationOpen, setReservationOpen] = useState(false)
   const [notice, setNotice] = useState(false)
   const date = dates[dateIndex]
+
+  async function handleLogout() {
+    await logout()
+    await navigate({ to: '/login' })
+  }
 
   function saveReservation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -307,6 +332,8 @@ function Dashboard() {
           </SheetDescription>
           <SidebarContent
             activeNav={activeNav}
+            user={user}
+            onLogout={handleLogout}
             onNavigate={(label) => {
               setActiveNav(label)
               setMobileNavOpen(false)
@@ -316,7 +343,12 @@ function Dashboard() {
       </Sheet>
 
       <aside className="sticky top-0 hidden h-screen flex-col border-r bg-sidebar text-sidebar-foreground lg:flex">
-        <SidebarContent activeNav={activeNav} onNavigate={setActiveNav} />
+        <SidebarContent
+          activeNav={activeNav}
+          onNavigate={setActiveNav}
+          onLogout={handleLogout}
+          user={user}
+        />
       </aside>
 
       <main className="min-w-0">

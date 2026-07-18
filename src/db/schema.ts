@@ -26,7 +26,7 @@ export const users = sqliteTable(
     updatedAt: integer('updated_at', { mode: 'number' }).notNull(),
   },
   (table) => [
-    uniqueIndex('users_email_unique').on(sql`${table.email} COLLATE NOCASE`),
+    uniqueIndex('users_email_unique').on(sql`lower(trim(${table.email}))`),
     index('users_role_active_idx').on(table.role, table.isActive),
     check('users_name_not_empty', sql`length(trim(${table.name})) > 0`),
     check(
