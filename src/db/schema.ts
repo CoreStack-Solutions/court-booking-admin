@@ -8,8 +8,9 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/sqlite-core'
 
-export const userRoles = ['admin', 'operator', 'viewer'] as const
-export type UserRole = (typeof userRoles)[number]
+import { userRoles } from '@/lib/auth.constants'
+
+export type { UserRole } from '@/lib/auth.constants'
 
 export const users = sqliteTable(
   'users',
@@ -25,9 +26,14 @@ export const users = sqliteTable(
     updatedAt: integer('updated_at', { mode: 'number' }).notNull(),
   },
   (table) => [
-    uniqueIndex('users_email_unique').on(table.email),
+    uniqueIndex('users_email_unique').on(sql`${table.email} COLLATE NOCASE`),
     index('users_role_active_idx').on(table.role, table.isActive),
     check('users_name_not_empty', sql`length(trim(${table.name})) > 0`),
+    check(
+      'users_role_valid',
+      sql`${table.role} in ('admin', 'operator', 'viewer')`,
+    ),
+    check('users_is_active_boolean', sql`${table.isActive} in (0, 1)`),
   ],
 )
 

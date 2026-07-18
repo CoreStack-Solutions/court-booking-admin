@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-import { userRoles } from '@/db/schema'
+import { userRoles } from '@/lib/auth.constants'
 
 export const userRoleSchema = z.enum(userRoles)
 

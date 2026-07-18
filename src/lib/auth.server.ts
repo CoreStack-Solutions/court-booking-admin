@@ -10,9 +10,15 @@ import { sessions, users } from '@/db/schema'
 import { db } from '@/lib/db.server'
 import { AppError } from '@/lib/errors'
 
-const sessionLifetimeSeconds = Number(
-  process.env.SESSION_MAX_AGE_SECONDS ?? 2_592_000,
-)
+function getSessionLifetimeSeconds() {
+  const configured = Number(process.env.SESSION_MAX_AGE_SECONDS ?? 2_592_000)
+  if (!Number.isSafeInteger(configured) || configured < 900) {
+    throw new Error('SESSION_MAX_AGE_SECONDS must be at least 900 seconds')
+  }
+  return Math.min(configured, 31_536_000)
+}
+
+const sessionLifetimeSeconds = getSessionLifetimeSeconds()
 const sessionCookieName = process.env.SESSION_COOKIE_NAME ?? 'canchas_session'
 const sessionCookieOptions = {
   httpOnly: true,
@@ -21,7 +27,10 @@ const sessionCookieOptions = {
   path: '/',
 }
 
-type SessionUser = typeof users.$inferSelect
+type SessionUser = Pick<
+  typeof users.$inferSelect,
+  'id' | 'name' | 'email' | 'role' | 'isActive'
+>
 
 export type AuthSession = {
   sessionId: string
@@ -57,7 +66,16 @@ export async function getCurrentSession(): Promise<AuthSession | null> {
 
   const now = Date.now()
   const result = await db
-    .select({ session: sessions, user: users })
+    .select({
+      session: sessions,
+      user: {
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        isActive: users.isActive,
+      },
+    })
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
     .where(

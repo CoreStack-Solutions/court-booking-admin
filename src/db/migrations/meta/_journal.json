@@ -8,6 +8,20 @@
       "when": 1784383723305,
       "tag": "0000_orange_hardball",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1784384238741,
+      "tag": "0001_cuddly_human_robot",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784384315931,
+      "tag": "0002_misty_may_parker",
+      "breakpoints": true
     }
   ]
 }
