@@ -16,7 +16,7 @@ export const Route = createRootRoute({
         content: 'width=device-width, initial-scale=1',
       },
       {
-        title: 'Central Padel | Operación',
+        title: 'CanchasApp | Operación',
       },
     ],
     links: [
