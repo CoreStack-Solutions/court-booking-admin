@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import {
   Circle,
   MapPin,
@@ -383,7 +384,7 @@ function CourtsPage() {
   ).length
 
   return (
-    <div className="mx-auto max-w-5xl p-4 md:p-6 xl:p-8">
+    <DashboardLayout user={user}>
       {/* Header */}
       <section className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
@@ -507,6 +508,6 @@ function CourtsPage() {
           onSave={handleSave}
         />
       )}
-    </div>
+    </DashboardLayout>
   )
 }
