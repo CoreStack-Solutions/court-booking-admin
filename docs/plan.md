@@ -4,6 +4,32 @@ Sistema para administrar canchas deportivas, reservas, pagos, quiosco, inventari
 
 Este plan reemplaza el backlog original por entregas verticales verificables. El objetivo no es completar muchas pantallas, sino entregar un sistema pequeño que pueda reservar, cobrar, auditar y operar sin perder datos ni dinero.
 
+## Estado actual
+
+Actualizado: 19 de julio de 2026, rama `develop`.
+
+Ya implementado:
+
+- Monolito TanStack Start con server functions tipadas, sin API REST interna.
+- SQLite con Drizzle ORM, `better-sqlite3`, migraciones versionadas, claves
+  foraneas, WAL y `busy_timeout`.
+- Esquema inicial de usuarios, sesiones, intentos de login, auditoria,
+  canchas y horarios.
+- Login, registro de usuario, sesiones con cookies, logout, roles y guards.
+- Rate limiting de login, hash Argon2, validacion Zod y errores serializables.
+- Seed de desarrollo para admin y cuatro canchas.
+- CRUD de canchas, estados operativos, horarios y consulta de disponibilidad.
+- Pantalla protegida de canchas y pruebas unitarias/de migraciones.
+
+El dashboard principal todavia usa datos de demostracion y no representa
+reservas reales. Todavia faltan clientes, reservas, tarifas, pagos, quiosco,
+inventario, caja, reportes, pruebas end-to-end y el endurecimiento de
+produccion.
+
+El siguiente objetivo es Sprint 3: reservas end-to-end, empezando por clientes,
+creacion desde disponibilidad y la proteccion contra solapamientos dentro de
+una transaccion SQLite.
+
 ## 1. Objetivos
 
 ### Objetivo principal
@@ -41,7 +67,8 @@ Permitir que un administrador gestione la operacion diaria de un complejo con cu
 
 ## 2. Decisiones de dominio
 
-Estas decisiones deben aprobarse antes de escribir las migraciones.
+Estas decisiones definen el dominio y deben aprobarse antes de ampliar las
+migraciones existentes.
 
 ### Tiempo y zona horaria
 
@@ -526,6 +553,8 @@ Duracion sugerida: 3 a 5 dias.
 
 ### Sprint 1: Base tecnica, login y despliegue de staging
 
+**Estado: implementado en desarrollo, excepto staging y pipeline de CI.**
+
 #### Aplicacion y experiencia
 
 - Crear estructura del monolito modular por funcionalidades.
@@ -560,6 +589,10 @@ Duracion sugerida: 3 a 5 dias.
 
 ### Sprint 2: Canchas, horarios y calendario de lectura
 
+**Estado: implementado parcialmente.** CRUD de canchas, estados, horarios,
+disponibilidad, pantalla protegida y pruebas base estan disponibles. El
+calendario operativo responsive sigue pendiente.
+
 #### Aplicacion y experiencia
 
 - Crear shell de navegacion y selector de fecha.
@@ -582,6 +615,8 @@ Duracion sugerida: 3 a 5 dias.
 - La grilla muestra bloques de 30 minutos sin inventar datos en frontend.
 
 ### Sprint 3: Reservas end-to-end
+
+**Estado: siguiente prioridad; no iniciado.**
 
 #### Aplicacion y experiencia
 
