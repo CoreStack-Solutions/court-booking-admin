@@ -66,10 +66,12 @@ for (const file of files) {
 
   // Check if all CREATE TABLE / CREATE INDEX already exist
   const tableMatches = [...sql.matchAll(/CREATE TABLE [`"](\w+)[`"]/gi)]
-  const indexMatches = [...sql.matchAll(/CREATE (?:UNIQUE )?INDEX [`"](\w+)[`"]/gi)]
+  const indexMatches = [
+    ...sql.matchAll(/CREATE (?:UNIQUE )?INDEX [`"](\w+)[`"]/gi),
+  ]
 
-  const tablesInMigration = tableMatches.map((m) => m[1]!)
-  const indexesInMigration = indexMatches.map((m) => m[1]!)
+  const tablesInMigration = tableMatches.map((m) => m[1])
+  const indexesInMigration = indexMatches.map((m) => m[1])
   const allObjects = [...tablesInMigration, ...indexesInMigration]
 
   const allExist =

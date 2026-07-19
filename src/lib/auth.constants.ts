@@ -6,3 +6,12 @@ export type CourtStatus = (typeof courtStatuses)[number]
 
 export const daysOfWeek = [0, 1, 2, 3, 4, 5, 6] as const
 export type DayOfWeek = (typeof daysOfWeek)[number]
+
+export const reservationStatuses = [
+  'pending',
+  'confirmed',
+  'completed',
+  'cancelled',
+  'no_show',
+] as const
+export type ReservationStatus = (typeof reservationStatuses)[number]

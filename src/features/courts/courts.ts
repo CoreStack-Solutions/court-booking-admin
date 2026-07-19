@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, gt, lt, or } from 'drizzle-orm'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import type { ZodType } from 'zod'
+import { z } from 'zod'
 
-import { auditLogs, courtHours, courts } from '@/db/schema'
+import { auditLogs, courtHours, courts, reservations } from '@/db/schema'
 import { db } from '@/lib/db.server'
 import { requireRole, requireSession } from '@/lib/auth.server'
 import { AppError, validationError } from '@/lib/errors'
@@ -53,9 +54,7 @@ function parseInput<T>(schema: ZodType<T>, data: unknown) {
   return parsed.data
 }
 
-function toSafeCourt(
-  court: typeof courts.$inferSelect,
-): SafeCourt {
+function toSafeCourt(court: typeof courts.$inferSelect): SafeCourt {
   return {
     id: court.id,
     name: court.name,
@@ -234,7 +233,8 @@ export const listCourtHours = createServerFn({ method: 'GET' })
   .middleware([courtErrorMiddleware])
   .validator((data) => {
     const parsed = z_courtId.safeParse(data)
-    if (!parsed.success) throw validationError({ form: ['ID de cancha inválido'] })
+    if (!parsed.success)
+      throw validationError({ form: ['ID de cancha inválido'] })
     return parsed.data
   })
   .handler(async ({ data }) => {
@@ -366,7 +366,7 @@ export const listAvailability = createServerFn({ method: 'GET' })
 
     // Get day of week for the requested date (0=Sunday)
     const [year, month, day] = data.date.split('-').map(Number)
-    const requestedDate = new Date(year!, month! - 1, day!)
+    const requestedDate = new Date(year, month - 1, day)
     const dayOfWeek = requestedDate.getDay()
 
     const dayHours = await db
@@ -385,12 +385,29 @@ export const listAvailability = createServerFn({ method: 'GET' })
       return { court: toSafeCourt(court), blocks: [] as AvailabilityBlock[] }
     }
 
+    const dayStart = new Date(`${data.date}T00:00:00-05:00`).getTime()
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000
+    const booked = await db
+      .select({ startsAt: reservations.startsAt, endsAt: reservations.endsAt })
+      .from(reservations)
+      .where(
+        and(
+          eq(reservations.courtId, data.courtId),
+          lt(reservations.startsAt, dayEnd),
+          gt(reservations.endsAt, dayStart),
+          or(
+            eq(reservations.status, 'pending'),
+            eq(reservations.status, 'confirmed'),
+          ),
+        ),
+      )
+
     // Generate 30-min blocks between opensAt and closesAt
     const blocks: AvailabilityBlock[] = []
     const [openH, openM] = dayHours.opensAt.split(':').map(Number)
     const [closeH, closeM] = dayHours.closesAt.split(':').map(Number)
-    let currentMinutes = openH! * 60 + openM!
-    const endMinutes = closeH! * 60 + closeM!
+    let currentMinutes = openH * 60 + openM
+    const endMinutes = closeH * 60 + closeM
 
     while (currentMinutes < endMinutes) {
       const nextMinutes = currentMinutes + 30
@@ -399,15 +416,24 @@ export const listAvailability = createServerFn({ method: 'GET' })
       blocks.push({
         startsAt: format(currentMinutes),
         endsAt: format(nextMinutes),
-        available: court.status === 'active',
+        available:
+          court.status === 'active' &&
+          !booked.some((reservation) => {
+            const blockStart = new Date(
+              `${data.date}T${format(currentMinutes)}:00-05:00`,
+            ).getTime()
+            const blockEnd = new Date(
+              `${data.date}T${format(nextMinutes)}:00-05:00`,
+            ).getTime()
+            return (
+              reservation.startsAt < blockEnd && reservation.endsAt > blockStart
+            )
+          }),
       })
       currentMinutes = nextMinutes
     }
 
     return { court: toSafeCourt(court), blocks }
   })
-
-// ─── Internal validator schema (not exported from schema file) ────────────────
-import { z } from 'zod'
 
 const z_courtId = z.object({ courtId: z.string().uuid() })

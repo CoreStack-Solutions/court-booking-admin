@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import {
   CalendarDays,
   ChevronLeft,
@@ -291,22 +291,47 @@ function CalendarPage() {
                         (item) => item.startsAt === time,
                       )
                       const available = block?.available ?? false
+                      const blockStart = new Date(
+                        `${date}T${time}:00-05:00`,
+                      ).getTime()
+                      const isPast = blockStart <= Date.now()
                       return (
                         <div
                           role={showTableSemantics ? 'cell' : undefined}
                           key={court.id}
                           className="border-r p-2 last:border-r-0"
                         >
-                          <div
-                            aria-label={`${court.name}, ${time}: ${available ? 'Disponible' : 'No disponible'}`}
-                            className={
-                              available
-                                ? 'flex min-h-12 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-xs font-medium text-primary'
-                                : 'flex min-h-12 items-center justify-center rounded-md border border-border bg-muted/50 text-xs text-muted-foreground'
-                            }
-                          >
-                            {available ? 'Disponible' : 'No disponible'}
-                          </div>
+                          {available && !isPast ? (
+                            user.role === 'viewer' ? (
+                              <div
+                                aria-label={`${court.name}, ${time}: Disponible`}
+                                className="flex min-h-12 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-xs font-medium text-primary"
+                              >
+                                Disponible
+                              </div>
+                            ) : (
+                              <Link
+                                to="/reservations/new"
+                                search={{
+                                  courtId: court.id,
+                                  date,
+                                  startsAt: time,
+                                  endsAt: block?.endsAt ?? time,
+                                }}
+                                aria-label={`${court.name}, ${time}: Disponible. Crear reserva`}
+                                className="flex min-h-12 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-xs font-medium text-primary hover:bg-primary/20"
+                              >
+                                Disponible
+                              </Link>
+                            )
+                          ) : (
+                            <div
+                              aria-label={`${court.name}, ${time}: ${isPast ? 'Pasado' : 'No disponible'}`}
+                              className="flex min-h-12 items-center justify-center rounded-md border border-border bg-muted/50 text-xs text-muted-foreground"
+                            >
+                              {isPast ? 'Pasado' : 'No disponible'}
+                            </div>
+                          )}
                         </div>
                       )
                     })}

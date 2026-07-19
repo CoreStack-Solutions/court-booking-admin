@@ -9,25 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RegisterRouteImport } from './routes/register'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as CourtsRouteImport } from './routes/courts'
-import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as CourtsRouteImport } from './routes/courts'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ReservationsRouteImport } from './routes/reservations'
+import { Route as ReservationsNewRouteImport } from './routes/reservations.new'
 
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CourtsRoute = CourtsRouteImport.update({
-  id: '/courts',
-  path: '/courts',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CalendarRoute = CalendarRouteImport.update({
@@ -35,10 +27,30 @@ const CalendarRoute = CalendarRouteImport.update({
   path: '/calendar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CourtsRoute = CourtsRouteImport.update({
+  id: '/courts',
+  path: '/courts',
   getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReservationsRoute = ReservationsRouteImport.update({
+  id: '/reservations',
+  path: '/reservations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReservationsNewRoute = ReservationsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ReservationsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -47,6 +59,8 @@ export interface FileRoutesByFullPath {
   '/courts': typeof CourtsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/reservations': typeof ReservationsRouteWithChildren
+  '/reservations/new': typeof ReservationsNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +68,8 @@ export interface FileRoutesByTo {
   '/courts': typeof CourtsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/reservations': typeof ReservationsRouteWithChildren
+  '/reservations/new': typeof ReservationsNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +78,37 @@ export interface FileRoutesById {
   '/courts': typeof CourtsRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/reservations': typeof ReservationsRouteWithChildren
+  '/reservations/new': typeof ReservationsNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/calendar' | '/courts' | '/login' | '/register'
+  fullPaths:
+    | '/'
+    | '/calendar'
+    | '/courts'
+    | '/login'
+    | '/register'
+    | '/reservations'
+    | '/reservations/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/calendar' | '/courts' | '/login' | '/register'
-  id: '__root__' | '/' | '/calendar' | '/courts' | '/login' | '/register'
+  to:
+    | '/'
+    | '/calendar'
+    | '/courts'
+    | '/login'
+    | '/register'
+    | '/reservations'
+    | '/reservations/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/calendar'
+    | '/courts'
+    | '/login'
+    | '/register'
+    | '/reservations'
+    | '/reservations/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,29 +117,16 @@ export interface RootRouteChildren {
   CourtsRoute: typeof CourtsRoute
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  ReservationsRoute: typeof ReservationsRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/courts': {
-      id: '/courts'
-      path: '/courts'
-      fullPath: '/courts'
-      preLoaderRoute: typeof CourtsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/calendar': {
@@ -109,15 +136,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CalendarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/courts': {
+      id: '/courts'
+      path: '/courts'
+      fullPath: '/courts'
+      preLoaderRoute: typeof CourtsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reservations': {
+      id: '/reservations'
+      path: '/reservations'
+      fullPath: '/reservations'
+      preLoaderRoute: typeof ReservationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reservations/new': {
+      id: '/reservations/new'
+      path: '/new'
+      fullPath: '/reservations/new'
+      preLoaderRoute: typeof ReservationsNewRouteImport
+      parentRoute: typeof ReservationsRoute
     }
   }
 }
+
+interface ReservationsRouteChildren {
+  ReservationsNewRoute: typeof ReservationsNewRoute
+}
+
+const ReservationsRouteChildren: ReservationsRouteChildren = {
+  ReservationsNewRoute: ReservationsNewRoute,
+}
+
+const ReservationsRouteWithChildren = ReservationsRoute._addFileChildren(
+  ReservationsRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -125,7 +192,17 @@ const rootRouteChildren: RootRouteChildren = {
   CourtsRoute: CourtsRoute,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  ReservationsRoute: ReservationsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

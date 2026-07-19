@@ -12,8 +12,6 @@ import {
   Store,
   Users,
   BarChart3,
-  CheckCircle2,
-  X,
 } from 'lucide-react'
 
 import { ModeToggle } from '@/components/mode-toggle'
@@ -21,27 +19,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetTitle,
 } from '@/components/ui/sheet'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
 import { logout } from '@/features/auth/auth'
 import type { SafeUser } from '@/features/auth/auth.schema'
@@ -57,6 +39,7 @@ const navSections = [
         badge: '12',
         href: '/calendar' as const,
       },
+      { label: 'Reservas', icon: CalendarDays, href: '/reservations' as const },
       { label: 'Canchas', icon: MapPin, href: '/courts' as const },
       { label: 'Clientes', icon: Users, href: undefined },
       { label: 'Caja y reportes', icon: BarChart3, href: undefined },
@@ -217,18 +200,10 @@ export function DashboardLayout({
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const [reservationOpen, setReservationOpen] = useState(false)
-  const [notice, setNotice] = useState(false)
 
   async function handleLogout() {
     await logout()
     await navigate({ to: '/login' })
-  }
-
-  function saveReservation(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setReservationOpen(false)
-    setNotice(true)
   }
 
   return (
@@ -288,125 +263,21 @@ export function DashboardLayout({
               <Bell />
               <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-destructive" />
             </Button>
-            <Button
-              size="icon"
-              className="sm:hidden"
-              onClick={() => setReservationOpen(true)}
-              aria-label="Nueva reserva"
-            >
-              <Plus />
-            </Button>
-            <Button
-              className="hidden sm:inline-flex"
-              onClick={() => setReservationOpen(true)}
-            >
-              <Plus data-icon="inline-start" />
-              Nueva reserva
-            </Button>
+            {user.role !== 'viewer' && (
+              <Link
+                to="/reservations/new"
+                className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
+                aria-label="Nueva reserva"
+              >
+                <Plus className="size-4" aria-hidden />
+                <span className="hidden sm:inline">Nueva reserva</span>
+              </Link>
+            )}
           </div>
         </header>
 
         <div className="mx-auto max-w-[1600px] w-full p-4 md:p-6 xl:p-8 flex-1">
-          {notice && (
-            <div className="relative mb-5">
-              <Alert>
-                <CheckCircle2 className="size-5 text-primary" />
-                <AlertDescription>
-                  Reserva creada correctamente.
-                </AlertDescription>
-              </Alert>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute right-2 top-1/2 -translate-y-1/2"
-                onClick={() => setNotice(false)}
-                aria-label="Cerrar aviso"
-              >
-                <X className="size-4" />
-              </Button>
-            </div>
-          )}
-
           {children}
-
-          <Dialog open={reservationOpen} onOpenChange={setReservationOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Nueva reserva</DialogTitle>
-                <DialogDescription>
-                  Los horarios se validarán antes de guardar.
-                </DialogDescription>
-              </DialogHeader>
-              <form
-                onSubmit={saveReservation}
-                className="grid gap-4 sm:grid-cols-2"
-              >
-                <label className="grid gap-2 text-sm font-medium sm:col-span-2">
-                  Cliente
-                  <Input
-                    required
-                    name="customer"
-                    autoComplete="name"
-                    defaultValue="Andrea Rojas"
-                  />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  Cancha
-                  <Select name="court" defaultValue="court-1">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona una cancha" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="court-1">Cancha 1</SelectItem>
-                      <SelectItem value="court-2">Cancha 2</SelectItem>
-                      <SelectItem value="court-3">Cancha 3</SelectItem>
-                      <SelectItem value="court-4">Cancha 4</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  Fecha
-                  <Input type="date" name="date" defaultValue="2026-07-17" />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  Inicio
-                  <Input
-                    type="time"
-                    name="startTime"
-                    step="1800"
-                    defaultValue="16:00"
-                  />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  Fin
-                  <Input
-                    type="time"
-                    name="endTime"
-                    step="1800"
-                    defaultValue="17:30"
-                  />
-                </label>
-                <div className="flex items-center justify-between rounded-lg bg-muted p-3 sm:col-span-2">
-                  <span className="text-sm text-muted-foreground">
-                    Cotización estimada
-                  </span>
-                  <span className="font-bold">S/ 90.00</span>
-                </div>
-                <div className="sm:col-span-2">
-                  <DialogFooter>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setReservationOpen(false)}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button type="submit">Crear reserva</Button>
-                  </DialogFooter>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
         </div>
       </main>
     </div>
