@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { and, asc, eq, gt, lt, or } from 'drizzle-orm'
+import { and, asc, eq, gt, inArray, lt } from 'drizzle-orm'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import type { ZodType } from 'zod'
 import { z } from 'zod'
@@ -20,6 +20,8 @@ import type {
   CourtHourEntry,
   SafeCourt,
 } from './courts.schema'
+import { reservationOverlaps } from '@/features/reservations/reservation-conflicts'
+import { reservationBlockingStatuses } from '@/lib/auth.constants'
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 
@@ -395,10 +397,7 @@ export const listAvailability = createServerFn({ method: 'GET' })
           eq(reservations.courtId, data.courtId),
           lt(reservations.startsAt, dayEnd),
           gt(reservations.endsAt, dayStart),
-          or(
-            eq(reservations.status, 'pending'),
-            eq(reservations.status, 'confirmed'),
-          ),
+          inArray(reservations.status, reservationBlockingStatuses),
         ),
       )
 
@@ -425,8 +424,11 @@ export const listAvailability = createServerFn({ method: 'GET' })
             const blockEnd = new Date(
               `${data.date}T${format(nextMinutes)}:00-05:00`,
             ).getTime()
-            return (
-              reservation.startsAt < blockEnd && reservation.endsAt > blockStart
+            return reservationOverlaps(
+              blockStart,
+              blockEnd,
+              reservation.startsAt,
+              reservation.endsAt,
             )
           }),
       })

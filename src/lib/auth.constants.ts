@@ -15,3 +15,5 @@ export const reservationStatuses = [
   'no_show',
 ] as const
 export type ReservationStatus = (typeof reservationStatuses)[number]
+
+export const reservationBlockingStatuses = ['pending', 'confirmed'] as const
