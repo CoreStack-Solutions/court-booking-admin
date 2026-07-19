@@ -51,7 +51,12 @@ const navSections = [
     title: 'Negocio Core',
     items: [
       { label: 'Resumen', icon: LayoutDashboard, href: '/' as const },
-      { label: 'Calendario', icon: CalendarDays, badge: '12', href: undefined },
+      {
+        label: 'Calendario',
+        icon: CalendarDays,
+        badge: '12',
+        href: '/calendar' as const,
+      },
       { label: 'Canchas', icon: MapPin, href: '/courts' as const },
       { label: 'Clientes', icon: Users, href: undefined },
       { label: 'Caja y reportes', icon: BarChart3, href: undefined },
@@ -127,6 +132,18 @@ function SidebarContent({
                 >
                   <item.icon className="size-[1.1rem]" aria-hidden="true" />
                   {item.label}
+                  {item.badge && (
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
+                        activeNav === item.href &&
+                          'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
+                      )}
+                    >
+                      {item.badge}
+                    </Badge>
+                  )}
                 </Link>
               ) : (
                 <Button
@@ -159,7 +176,6 @@ function SidebarContent({
           </div>
         ))}
       </nav>
-
 
       <div className="border-t p-3">
         <Button
