@@ -29,6 +29,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { getCurrentUser } from '@/features/auth/auth'
 import {
@@ -461,15 +469,15 @@ function InventoryPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <label className="grid gap-2 text-sm font-medium">
-              Nombre de la Categoría
+            <div className="grid gap-2">
+              <Label>Nombre de la Categoría</Label>
               <Input
                 required
                 placeholder="Ej. Bebidas Heladas, Snacks, Pelotas"
                 value={catName}
                 onChange={(e) => setCatName(e.target.value)}
               />
-            </label>
+            </div>
             <DialogFooter className="mt-4">
               <Button
                 type="button"
@@ -508,43 +516,42 @@ function InventoryPage() {
                 </Alert>
               )}
               <div className="grid gap-4 sm:grid-cols-2">
-                <label className="grid gap-2 text-sm font-medium">
-                  Categoría
-                  <select
-                    className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                    value={prodCategoryId}
-                    onChange={(e) => setProdCategoryId(e.target.value)}
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  SKU / Cód. Barras (opcional)
+                <div className="grid gap-2">
+                  <Label>Categoría</Label>
+                  <Select value={prodCategoryId} onValueChange={setProdCategoryId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona categoría" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label>SKU / Cód. Barras (opcional)</Label>
                   <Input
                     placeholder="Código identificador"
                     value={prodSku}
                     onChange={(e) => setProdSku(e.target.value)}
                   />
-                </label>
+                </div>
               </div>
 
-              <label className="grid gap-2 text-sm font-medium">
-                Nombre del Producto
+              <div className="grid gap-2">
+                <Label>Nombre del Producto</Label>
                 <Input
                   required
                   placeholder="Ej. Gaseosa Coca Cola 500ml"
                   value={prodName}
                   onChange={(e) => setProdName(e.target.value)}
                 />
-              </label>
+              </div>
 
               <div className="grid gap-4 sm:grid-cols-3">
-                <label className="grid gap-2 text-sm font-medium">
-                  Precio Venta (S/.)
+                <div className="grid gap-2">
+                  <Label>Precio Venta (S/.)</Label>
                   <Input
                     required
                     type="number"
@@ -554,9 +561,9 @@ function InventoryPage() {
                     value={prodPrice}
                     onChange={(e) => setProdPrice(e.target.value)}
                   />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  Stock Inicial
+                </div>
+                <div className="grid gap-2">
+                  <Label>Stock Inicial</Label>
                   <Input
                     required
                     type="number"
@@ -565,9 +572,9 @@ function InventoryPage() {
                     value={prodInitialStock}
                     onChange={(e) => setProdInitialStock(e.target.value)}
                   />
-                </label>
-                <label className="grid gap-2 text-sm font-medium">
-                  Alerta Stock Mínimo
+                </div>
+                <div className="grid gap-2">
+                  <Label>Alerta Stock Mínimo</Label>
                   <Input
                     required
                     type="number"
@@ -576,7 +583,7 @@ function InventoryPage() {
                     value={prodThreshold}
                     onChange={(e) => setProdThreshold(e.target.value)}
                   />
-                </label>
+                </div>
               </div>
 
               <DialogFooter className="mt-4">
@@ -613,43 +620,42 @@ function InventoryPage() {
               </Alert>
             )}
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium">
-                Categoría
-                <select
-                  className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  value={prodCategoryId}
-                  onChange={(e) => setProdCategoryId(e.target.value)}
-                >
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                SKU / Cód. Barras (opcional)
+              <div className="grid gap-2">
+                <Label>Categoría</Label>
+                <Select value={prodCategoryId} onValueChange={setProdCategoryId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>SKU / Cód. Barras (opcional)</Label>
                 <Input
                   placeholder="Código identificador"
                   value={prodSku}
                   onChange={(e) => setProdSku(e.target.value)}
                 />
-              </label>
+              </div>
             </div>
 
-            <label className="grid gap-2 text-sm font-medium">
-              Nombre del Producto
+            <div className="grid gap-2">
+              <Label>Nombre del Producto</Label>
               <Input
                 required
                 placeholder="Ej. Gaseosa Coca Cola"
                 value={prodName}
                 onChange={(e) => setProdName(e.target.value)}
               />
-            </label>
+            </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-medium">
-                Precio Venta (S/.)
+              <div className="grid gap-2">
+                <Label>Precio Venta (S/.)</Label>
                 <Input
                   required
                   type="number"
@@ -659,9 +665,9 @@ function InventoryPage() {
                   value={prodPrice}
                   onChange={(e) => setProdPrice(e.target.value)}
                 />
-              </label>
-              <label className="grid gap-2 text-sm font-medium">
-                Alerta Stock Mínimo
+              </div>
+              <div className="grid gap-2">
+                <Label>Alerta Stock Mínimo</Label>
                 <Input
                   required
                   type="number"
@@ -670,7 +676,7 @@ function InventoryPage() {
                   value={prodThreshold}
                   onChange={(e) => setProdThreshold(e.target.value)}
                 />
-              </label>
+              </div>
             </div>
 
             <DialogFooter className="mt-4">
@@ -714,8 +720,8 @@ function InventoryPage() {
                 <span>Stock Actual: <strong className="text-foreground text-sm font-black">{selectedProduct.currentStock} unidades</strong></span>
               </div>
 
-              <label className="grid gap-2 text-sm font-medium">
-                Cantidad a ajustar (usa negativo para salidas/mermas)
+              <div className="grid gap-2">
+                <Label>Cantidad a ajustar (usa negativo para salidas/mermas)</Label>
                 <Input
                   required
                   type="number"
@@ -723,17 +729,17 @@ function InventoryPage() {
                   value={adjDelta}
                   onChange={(e) => setAdjDelta(e.target.value)}
                 />
-              </label>
+              </div>
 
-              <label className="grid gap-2 text-sm font-medium">
-                Motivo del Ajuste
+              <div className="grid gap-2">
+                <Label>Motivo del Ajuste</Label>
                 <Input
                   required
                   placeholder="Ej. Compra de mercadería, botella rota, etc."
                   value={adjReason}
                   onChange={(e) => setAdjReason(e.target.value)}
                 />
-              </label>
+              </div>
 
               <DialogFooter className="mt-4">
                 <Button

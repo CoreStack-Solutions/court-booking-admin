@@ -21,6 +21,13 @@ import {
 } from '@/components/ui/card'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { TimePicker } from '@/components/ui/time-picker'
 import { getCurrentUser } from '@/features/auth/auth'
 import { listCourts } from '@/features/courts/courts'
@@ -223,28 +230,27 @@ function EditReservationPage() {
               )}
               <div className="grid gap-2">
                 <Label htmlFor="reservation-court">Cancha</Label>
-                <select
-                  id="reservation-court"
-                  required
-                  value={courtId}
-                  onChange={(event) => setCourtId(event.target.value)}
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  {courts
-                    .filter(
-                      (court) =>
-                        court.status === 'active' ||
-                        court.id === reservation.courtId,
-                    )
-                    .map((court) => (
-                      <option key={court.id} value={court.id}>
-                        {court.name}
-                        {court.status === 'maintenance'
-                          ? ' · Mantenimiento'
-                          : ''}
-                      </option>
-                    ))}
-                </select>
+                <Select value={courtId} onValueChange={setCourtId}>
+                  <SelectTrigger id="reservation-court">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courts
+                      .filter(
+                        (court) =>
+                          court.status === 'active' ||
+                          court.id === reservation.courtId,
+                      )
+                      .map((court) => (
+                        <SelectItem key={court.id} value={court.id}>
+                          {court.name}
+                          {court.status === 'maintenance'
+                            ? ' · Mantenimiento'
+                            : ''}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="grid gap-2">
