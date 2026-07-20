@@ -11,7 +11,7 @@ if (databaseUrl !== ':memory:') {
   mkdirSync(dirname(databaseUrl), { recursive: true })
 }
 
-const sqlite = new Database(databaseUrl)
+export const sqlite = new Database(databaseUrl)
 sqlite.pragma('foreign_keys = ON')
 sqlite.pragma('journal_mode = WAL')
 sqlite.pragma('busy_timeout = 5000')

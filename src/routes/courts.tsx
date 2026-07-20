@@ -129,7 +129,10 @@ function CourtDialog({
     sortOrder: String(court?.sortOrder ?? 0),
   })
 
-  function set<K extends keyof CourtFormState>(key: K, value: CourtFormState[K]) {
+  function set<TKey extends keyof CourtFormState>(
+    key: TKey,
+    value: CourtFormState[TKey],
+  ) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -142,7 +145,7 @@ function CourtDialog({
       if (isNaN(sortOrder)) throw new Error('Orden inválido')
 
       let result: SafeCourt
-      if (isEdit && court) {
+      if (court) {
         const res = await updateCourt({
           data: {
             id: court.id,

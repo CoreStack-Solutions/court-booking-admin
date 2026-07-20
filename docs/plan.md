@@ -6,7 +6,7 @@ Este plan reemplaza el backlog original por entregas verticales verificables. El
 
 ## Estado actual
 
-Actualizado: 19 de julio de 2026, rama `develop`.
+Actualizado: 20 de julio de 2026, rama `feat-3`.
 
 Ya implementado:
 
@@ -20,15 +20,18 @@ Ya implementado:
 - Seed de desarrollo para admin y cuatro canchas.
 - CRUD de canchas, estados operativos, horarios y consulta de disponibilidad.
 - Pantalla protegida de canchas y pruebas unitarias/de migraciones.
+- Clientes, creación, detalle, edición y ciclo de vida de reservas.
+- Idempotencia de creación y protección contra solapamientos con `BEGIN IMMEDIATE`.
+- Reglas tarifarias, cotización por bloques de 30 minutos y snapshots de precio.
+- Dashboard operativo conectado a reservas, ocupación y auditoría.
+- Fundaciones de pagos: métodos, estados, tabla y contrato de entrada validados;
+  todavía no existe registro de pagos.
 
-El dashboard principal todavia usa datos de demostracion y no representa
-reservas reales. Todavia faltan clientes, reservas, tarifas, pagos, quiosco,
-inventario, caja, reportes, pruebas end-to-end y el endurecimiento de
-produccion.
+Todavía faltan cobro de reservas, quiosco, inventario, caja, reportes
+financieros, pruebas end-to-end y el endurecimiento de producción.
 
-El siguiente objetivo es Sprint 3: reservas end-to-end, empezando por clientes,
-creacion desde disponibilidad y la proteccion contra solapamientos dentro de
-una transaccion SQLite.
+El siguiente objetivo es implementar el cobro idempotente de reservas. Después
+seguirán quiosco e inventario, y finalmente caja, reportes y cierres financieros.
 
 ## 1. Objetivos
 
@@ -553,7 +556,8 @@ Duracion sugerida: 3 a 5 dias.
 
 ### Sprint 1: Base tecnica, login y despliegue de staging
 
-**Estado: implementado en desarrollo, excepto staging y pipeline de CI.**
+**Estado: implementado parcialmente en desarrollo.** Faltan health check,
+backup/restauración, staging y pipeline de CI.
 
 #### Aplicacion y experiencia
 
@@ -589,9 +593,9 @@ Duracion sugerida: 3 a 5 dias.
 
 ### Sprint 2: Canchas, horarios y calendario de lectura
 
-**Estado: implementado parcialmente.** CRUD de canchas, estados, horarios,
-disponibilidad, pantalla protegida y pruebas base estan disponibles. El
-calendario operativo responsive sigue pendiente.
+**Estado: implementado en desarrollo.** CRUD de canchas, estados, horarios,
+disponibilidad, pantalla protegida, calendario responsive y pruebas base están
+disponibles.
 
 #### Aplicacion y experiencia
 
@@ -616,7 +620,7 @@ calendario operativo responsive sigue pendiente.
 
 ### Sprint 3: Reservas end-to-end
 
-**Estado: siguiente prioridad; no iniciado.**
+**Estado: implementado en desarrollo; falta completar E2E.**
 
 #### Aplicacion y experiencia
 
@@ -644,7 +648,13 @@ calendario operativo responsive sigue pendiente.
 - El usuario ve un error accionable ante `RESERVATION_CONFLICT`.
 - La reserva conserva quien la creo y sus cambios relevantes.
 
+La creación, el detalle, la edición y las acciones de ciclo de vida ya están
+disponibles. La cobertura pendiente es principalmente de integración de server
+functions y recorridos end-to-end.
+
 ### Sprint 4: Tarifas y cobro de reservas
+
+**Estado: tarifas implementadas en desarrollo; cobro pendiente.**
 
 #### Aplicacion y experiencia
 
@@ -660,6 +670,10 @@ calendario operativo responsive sigue pendiente.
 - Soporte para cambio de tarifa dentro del rango.
 - Congelamiento del precio al confirmar.
 - Server function transaccional de pago.
+
+Las reglas tarifarias, la cotización y el congelamiento del importe ya están
+implementados. La tabla y el contrato base de pagos existen, pero aún no se
+registra ni confirma ningún pago.
 
 #### Criterios de aceptacion
 
@@ -997,11 +1011,15 @@ Mitigacion: WAL, `busy_timeout`, transacciones breves, una sola replica escritor
 - Reservas con anti-cruce.
 - Auditoria basica.
 
+Estas capacidades están disponibles en desarrollo. Antes de usarlas en
+operación real faltan pruebas E2E, staging y el runbook de recuperación.
+
 ### Lanzamiento interno 2
 
 - Tarifas.
 - Cobro de reservas.
-- Caja basica.
+
+Las tarifas ya están disponibles. El cobro sigue pendiente.
 
 ### Lanzamiento interno 3
 
@@ -1012,7 +1030,7 @@ Mitigacion: WAL, `busy_timeout`, transacciones breves, una sola replica escritor
 
 ### Lanzamiento operativo
 
-- Reportes completos.
+- Caja y reportes.
 - Backups y restauracion probada.
 - Monitoreo.
 - Manual de operacion.

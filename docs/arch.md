@@ -66,22 +66,26 @@ TanStack Start genera el transporte de las server functions. Que una llamada par
 
 Los modulos iniciales son:
 
-| Modulo | Responsabilidad |
-| --- | --- |
-| `auth` | Sesiones, login, logout, usuarios, roles y permisos |
-| `courts` | Canchas, estado operativo y horarios |
-| `customers` | Datos de clientes sin cuenta de acceso |
-| `rates` | Reglas tarifarias y cotizaciones |
-| `reservations` | Disponibilidad, reservas y ciclo de vida |
-| `payments` | Cobros, anulaciones y devoluciones |
-| `catalog` | Categorias y productos |
-| `sales` | Venta de quiosco y sus lineas |
-| `inventory` | Stock y movimientos auditables |
-| `cash` | Apertura, movimientos, cierre y conciliacion |
-| `reports` | Lecturas agregadas de operacion e ingresos |
-| `audit` | Registro de acciones sensibles |
+| Modulo         | Responsabilidad                                     |
+| -------------- | --------------------------------------------------- |
+| `auth`         | Sesiones, login, logout, usuarios, roles y permisos |
+| `courts`       | Canchas, estado operativo y horarios                |
+| `customers`    | Datos de clientes sin cuenta de acceso              |
+| `rates`        | Reglas tarifarias y cotizaciones                    |
+| `reservations` | Disponibilidad, reservas y ciclo de vida            |
+| `payments`     | Cobros, anulaciones y devoluciones                  |
+| `catalog`      | Categorias y productos                              |
+| `sales`        | Venta de quiosco y sus lineas                       |
+| `inventory`    | Stock y movimientos auditables                      |
+| `cash`         | Apertura, movimientos, cierre y conciliacion        |
+| `reports`      | Lecturas agregadas de operacion e ingresos          |
+| `audit`        | Registro de acciones sensibles                      |
 
 Estos son limites de organizacion, no microservicios. Una operacion que cruza modulos, por ejemplo registrar una venta y descontar stock, tiene un unico propietario (`sales`) y ejecuta todas sus escrituras en una transaccion. No se coordina mediante eventos internos ni llamadas RPC entre modulos.
+
+En el estado actual, `payments` solo contiene constantes, validacion de entrada
+y persistencia base. No hay todavía una server function que registre, anule o
+devuelva pagos.
 
 ## 6. Organizacion del codigo
 
@@ -158,6 +162,11 @@ El tipo inferido por TypeScript mejora productividad, pero no reemplaza la valid
 
 No se expondra una API REST paralela para la aplicacion web. Solo se agregara una ruta HTTP explicita cuando exista un consumidor que no pueda usar las server functions, como un webhook de pagos o un health check de infraestructura.
 
+`recordReservationPayment` y las demás mutaciones financieras permanecen como
+contratos futuros hasta completar las reglas de caja e idempotencia. La tabla
+`payments` ya exige dinero positivo en centavos, un método y estado válidos, y
+exactamente un origen entre reserva y venta.
+
 ### Estado cliente
 
 - El estado de la URL contiene fecha seleccionada, filtros, busqueda y pagina cuando deba ser compartible o recuperable.
@@ -214,16 +223,16 @@ Los valores exactos de timeout y checkpoint se miden en produccion; no se convie
 
 SQLite no tiene `timestamptz`, `numeric` ni enums nativos. Se usaran representaciones explicitas:
 
-| Concepto | SQLite | Regla |
-| --- | --- | --- |
-| Identificador | `text` | UUID generado por la aplicacion |
-| Instante | `integer` | Epoch milliseconds UTC |
-| Fecha de negocio | `text` | `YYYY-MM-DD` en `America/Lima` |
-| Hora local recurrente | `integer` | Minutos desde medianoche |
-| Dinero | `integer` | Centimos de PEN; nunca `float` |
-| Booleano | `integer` | `0` o `1` con `CHECK` |
-| Estado | `text` | Union TypeScript y `CHECK` en tabla |
-| JSON de auditoria | `text` | JSON serializado, sin secretos |
+| Concepto              | SQLite    | Regla                               |
+| --------------------- | --------- | ----------------------------------- |
+| Identificador         | `text`    | UUID generado por la aplicacion     |
+| Instante              | `integer` | Epoch milliseconds UTC              |
+| Fecha de negocio      | `text`    | `YYYY-MM-DD` en `America/Lima`      |
+| Hora local recurrente | `integer` | Minutos desde medianoche            |
+| Dinero                | `integer` | Centimos de PEN; nunca `float`      |
+| Booleano              | `integer` | `0` o `1` con `CHECK`               |
+| Estado                | `text`    | Union TypeScript y `CHECK` en tabla |
+| JSON de auditoria     | `text`    | JSON serializado, sin secretos      |
 
 Los intervalos de reserva son semiabiertos: `[startsAt, endsAt)`. Por ello una reserva puede empezar exactamente cuando termina otra. `startsAt < endsAt`, duracion minima y alineacion a bloques se validan en servidor y, cuando sea practico, tambien mediante `CHECK`.
 
@@ -276,7 +285,11 @@ Obtener el bloqueo antes del `SELECT` evita que dos escritores lean simultaneame
 
 ### Cobros e idempotencia
 
-Crear reserva, registrar pago, crear venta, anular y cerrar caja reciben una clave de idempotencia generada por el cliente. Dentro de la misma transaccion se registra alcance, actor, clave, estado y `resultId`. Si la clave ya termino, se devuelve la operacion original; si fue reutilizada con otro payload, se rechaza.
+La creación de reservas ya recibe una clave de idempotencia generada por el
+cliente. Las futuras operaciones de pago, venta, anulación y cierre de caja
+deberán seguir el mismo patrón: registrar alcance, actor, clave, estado y
+`resultId` dentro de la misma transacción. Si la clave ya terminó, se devuelve
+la operación original; si fue reutilizada con otro payload, se rechaza.
 
 Las restricciones unicas siguen siendo la ultima defensa. No se depende de memoria del proceso para idempotencia.
 
@@ -433,19 +446,19 @@ El salto a marketplace multi-sede requeriria ademas modelar `venues`, pertenenci
 
 ## 19. Decisiones resumidas
 
-| Tema | Decision |
-| --- | --- |
-| Aplicacion | Monolito modular TanStack Start |
-| Transporte | Server functions tipadas; sin REST interno |
-| Persistencia | Drizzle ORM con SQLite |
-| Organizacion | Por funcionalidad, con pocas capas |
-| Validacion | Runtime en cada server function |
-| Autorizacion | Sesion y permisos comprobados en servidor |
-| Dinero | Enteros en centimos de PEN |
-| Tiempo | Epoch milliseconds UTC y zona `America/Lima` |
-| Concurrencia | Transacciones de escritura inmediata e idempotencia |
-| Estado remoto | Loaders de TanStack Router por defecto |
-| Despliegue | Un proceso escritor y volumen local persistente |
-| Escalado | Medir primero; migrar base o topologia solo ante limites reales |
+| Tema          | Decision                                                        |
+| ------------- | --------------------------------------------------------------- |
+| Aplicacion    | Monolito modular TanStack Start                                 |
+| Transporte    | Server functions tipadas; sin REST interno                      |
+| Persistencia  | Drizzle ORM con SQLite                                          |
+| Organizacion  | Por funcionalidad, con pocas capas                              |
+| Validacion    | Runtime en cada server function                                 |
+| Autorizacion  | Sesion y permisos comprobados en servidor                       |
+| Dinero        | Enteros en centimos de PEN                                      |
+| Tiempo        | Epoch milliseconds UTC y zona `America/Lima`                    |
+| Concurrencia  | Transacciones de escritura inmediata e idempotencia             |
+| Estado remoto | Loaders de TanStack Router por defecto                          |
+| Despliegue    | Un proceso escritor y volumen local persistente                 |
+| Escalado      | Medir primero; migrar base o topologia solo ante limites reales |
 
 Esta arquitectura optimiza la entrega de una aplicacion confiable, no la cantidad de capas. Las fronteras importantes son la server function como limite de confianza y la transaccion como limite de consistencia.

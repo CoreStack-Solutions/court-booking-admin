@@ -36,31 +36,57 @@ export const updateCourtSchema = z
     { message: 'Debes indicar al menos un cambio' },
   )
 
-const courtHourEntrySchema = z.object({
-  dayOfWeek: z.number().int().min(0).max(6),
-  opensAt: z
-    .string()
-    .regex(timePattern, 'Hora inválida (HH:MM)')
-    .default('07:00'),
-  closesAt: z
-    .string()
-    .regex(timePattern, 'Hora inválida (HH:MM)')
-    .default('22:00'),
-  isClosed: z.boolean().default(false),
-})
+const timeToMinutes = (value: string) => {
+  const [hour, minute] = value.split(':').map(Number)
+  return hour * 60 + minute
+}
 
-export const updateCourtHoursSchema = z.object({
-  courtId: z.string().uuid(),
-  hours: z
-    .array(courtHourEntrySchema)
-    .length(7, 'Debes enviar los 7 días de la semana'),
-})
+const courtHourEntrySchema = z
+  .object({
+    dayOfWeek: z.number().int().min(0).max(6),
+    opensAt: z
+      .string()
+      .regex(timePattern, 'Hora inválida (HH:MM)')
+      .default('07:00'),
+    closesAt: z
+      .string()
+      .regex(timePattern, 'Hora inválida (HH:MM)')
+      .default('22:00'),
+    isClosed: z.boolean().default(false),
+  })
+  .refine(
+    ({ opensAt, closesAt, isClosed }) =>
+      isClosed ||
+      (timeToMinutes(opensAt) % 30 === 0 &&
+        timeToMinutes(closesAt) % 30 === 0 &&
+        timeToMinutes(closesAt) > timeToMinutes(opensAt)),
+    { message: 'El horario debe usar bloques de 30 minutos válidos' },
+  )
+
+export const updateCourtHoursSchema = z
+  .object({
+    courtId: z.string().uuid(),
+    hours: z
+      .array(courtHourEntrySchema)
+      .length(7, 'Debes enviar los 7 días de la semana'),
+  })
+  .refine(
+    ({ hours }) => new Set(hours.map((entry) => entry.dayOfWeek)).size === 7,
+    { message: 'Debes enviar un horario único para cada día' },
+  )
 
 export const listAvailabilitySchema = z.object({
   courtId: z.string().uuid(),
   date: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)'),
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (YYYY-MM-DD)')
+    .refine((value) => {
+      const parsed = new Date(`${value}T00:00:00Z`)
+      return (
+        !Number.isNaN(parsed.getTime()) &&
+        parsed.toISOString().slice(0, 10) === value
+      )
+    }, 'Fecha inválida (YYYY-MM-DD)'),
 })
 
 export type CreateCourtInput = z.infer<typeof createCourtSchema>
@@ -91,4 +117,7 @@ export type AvailabilityBlock = {
   startsAt: string // HH:MM
   endsAt: string // HH:MM
   available: boolean
+  reservationId?: string
+  reservationCustomerName?: string
+  reservationStatus?: 'pending' | 'confirmed'
 }

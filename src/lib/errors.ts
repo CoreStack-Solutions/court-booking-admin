@@ -1,5 +1,3 @@
-import { randomUUID } from 'node:crypto'
-
 export const errorCodes = [
   'UNAUTHENTICATED',
   'FORBIDDEN',
@@ -13,6 +11,15 @@ export const errorCodes = [
   'RATE_LIMITED',
   'COURT_NOT_FOUND',
   'COURT_HOURS_CONFLICT',
+  'RATE_NOT_FOUND',
+  'RATE_RULE_NOT_FOUND',
+  'RATE_RULE_CONFLICT',
+  'QUOTE_CHANGED',
+  'CUSTOMER_NOT_FOUND',
+  'RESERVATION_NOT_FOUND',
+  'RESERVATION_CONFLICT',
+  'RESERVATION_STATE_INVALID',
+  'IDEMPOTENCY_KEY_REUSED',
   'INTERNAL_ERROR',
 ] as const
 
@@ -27,7 +34,7 @@ export class AppError extends Error {
     code: ErrorCode,
     message: string,
     details: Record<string, unknown> = {},
-    requestId: string = randomUUID(),
+    requestId: string = globalThis.crypto.randomUUID(),
   ) {
     super(message)
     this.name = 'AppError'
@@ -50,7 +57,10 @@ export function validationError(
   )
 }
 
-export function toAppError(error: unknown, requestId = randomUUID()) {
+export function toAppError(
+  error: unknown,
+  requestId = globalThis.crypto.randomUUID(),
+) {
   if (error instanceof AppError) return error
 
   return new AppError(
@@ -59,4 +69,14 @@ export function toAppError(error: unknown, requestId = randomUUID()) {
     {},
     requestId,
   )
+}
+
+export function getErrorCode(error: unknown) {
+  if (!error || typeof error !== 'object') return undefined
+  const value = error as {
+    code?: unknown
+    data?: { code?: unknown }
+  }
+  if (typeof value.code === 'string') return value.code
+  return typeof value.data?.code === 'string' ? value.data.code : undefined
 }
