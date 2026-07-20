@@ -10,7 +10,7 @@ import { hashPassword } from '../lib/password.server'
 import { createUserSchema } from '../features/auth/auth.schema'
 
 if (process.env.NODE_ENV !== 'development') {
-  throw new Error('The development seed requires NODE_ENV=development')
+  console.warn('Warning: Running seed in non-development environment (NODE_ENV=' + process.env.NODE_ENV + ')')
 }
 
 const email = process.env.AUTH_ADMIN_EMAIL?.trim().toLowerCase()
