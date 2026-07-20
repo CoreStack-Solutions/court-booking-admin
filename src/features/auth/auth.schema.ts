@@ -45,3 +45,13 @@ export type SafeUser = {
   role: z.infer<typeof userRoleSchema>
   isActive: boolean
 }
+
+export const updateProfileSchema = z.object({
+  name: z.string().trim().min(1, 'El nombre es requerido').max(120),
+})
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'La contraseña actual es requerida'),
+  newPassword: passwordSchema,
+})
+

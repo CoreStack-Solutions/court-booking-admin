@@ -187,29 +187,32 @@ function SidebarContent({
         ))}
       </nav>
 
-      <div className="border-t p-3">
-        <Button
-          variant="ghost"
-          aria-label="Cerrar sesión"
-          title="Cerrar sesión"
-          className="h-auto w-full justify-start gap-3 text-left text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          onClick={onLogout}
+      <div className="border-t p-3 flex items-center justify-between gap-2">
+        <Link
+          to="/profile"
+          className="flex flex-1 items-center gap-3 rounded-md p-1.5 text-left text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground min-w-0"
         >
-          <span className="grid size-9 place-items-center rounded-full bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground">
+          <span className="grid size-9 place-items-center rounded-full bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground shrink-0">
             {initials}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold">
+            <span className="block truncate text-sm font-semibold text-foreground">
               {user.name}
             </span>
             <span className="block text-xs text-sidebar-foreground/55">
               {roleLabel}
             </span>
           </span>
-          <LogOut
-            className="size-4 text-sidebar-foreground/55"
-            aria-hidden="true"
-          />
+        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          className="h-9 w-9 shrink-0 text-sidebar-foreground/55 hover:text-red-500 hover:bg-red-500/10"
+          onClick={onLogout}
+        >
+          <LogOut className="size-4" aria-hidden="true" />
         </Button>
       </div>
     </>
