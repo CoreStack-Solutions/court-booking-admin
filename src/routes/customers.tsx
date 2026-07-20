@@ -29,6 +29,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { getCurrentUser } from '@/features/auth/auth'
 import {
@@ -403,34 +405,34 @@ function CustomersPage() {
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
-            <label className="grid gap-2 text-sm font-medium">
-              Nombre Completo
+            <div className="grid gap-2">
+              <Label>Nombre Completo</Label>
               <Input
                 required
                 placeholder="Ej. Andrea Rojas"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Teléfono (opcional)
+            </div>
+            <div className="grid gap-2">
+              <Label>Teléfono (opcional)</Label>
               <Input
                 placeholder="Ej. 987654321"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Notas del cliente (opcional)
-              <textarea
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="customer-notes">Notas del cliente (opcional)</Label>
+              <Textarea
+                id="customer-notes"
                 placeholder="Notas adicionales, preferencias, etc."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 maxLength={500}
                 rows={3}
-                className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
-            </label>
+            </div>
             <DialogFooter className="mt-4">
               <Button
                 type="button"

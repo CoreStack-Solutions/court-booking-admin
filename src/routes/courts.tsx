@@ -29,6 +29,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -197,8 +198,8 @@ function CourtDialog({
             </Alert>
           )}
 
-          <label className="grid gap-2 text-sm font-medium">
-            Nombre
+          <div className="grid gap-2">
+            <Label>Nombre</Label>
             <Input
               required
               value={form.name}
@@ -206,11 +207,11 @@ function CourtDialog({
               placeholder="Cancha 1"
               maxLength={80}
             />
-          </label>
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <label className="grid gap-2 text-sm font-medium">
-              Color
+            <div className="grid gap-2">
+              <Label>Color</Label>
               <Select
                 value={form.color}
                 onValueChange={(v) => set('color', v)}
@@ -238,22 +239,22 @@ function CourtDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </label>
+            </div>
 
-            <label className="grid gap-2 text-sm font-medium">
-              Orden
+            <div className="grid gap-2">
+              <Label>Orden</Label>
               <Input
                 type="number"
                 min={0}
                 value={form.sortOrder}
                 onChange={(e) => set('sortOrder', e.target.value)}
               />
-            </label>
+            </div>
           </div>
 
           {isEdit && (
-            <label className="grid gap-2 text-sm font-medium">
-              Estado
+            <div className="grid gap-2">
+              <Label>Estado</Label>
               <Select
                 value={form.status}
                 onValueChange={(v) =>
@@ -276,7 +277,7 @@ function CourtDialog({
                   ))}
                 </SelectContent>
               </Select>
-            </label>
+            </div>
           )}
 
           <DialogFooter>
@@ -313,7 +314,7 @@ function CourtCard({
   const StatusIcon = status.icon
 
   return (
-    <article className="group relative flex flex-col rounded-xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
+    <Card className="group relative flex flex-col rounded-xl p-5 shadow-sm transition-shadow hover:shadow-md">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div
           className="grid size-12 shrink-0 place-items-center rounded-xl shadow-sm"
@@ -354,7 +355,7 @@ function CourtCard({
           </Button>
         </div>
       )}
-    </article>
+    </Card>
   )
 }
 
