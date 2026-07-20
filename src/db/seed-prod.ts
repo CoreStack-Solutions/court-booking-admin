@@ -10,13 +10,18 @@ export async function seedProduction(db: BetterSQLite3Database<typeof schema>) {
   const email = process.env.AUTH_ADMIN_EMAIL?.trim().toLowerCase()
   const password = process.env.AUTH_ADMIN_PASSWORD
 
+  console.log('[seed] Starting production seed...')
+  console.log('[seed] Email configured:', !!email)
+  console.log('[seed] Password configured:', !!password)
+
   if (!email || !password || password.length < 12) {
-    console.warn('AUTH_ADMIN_EMAIL/AUTH_ADMIN_PASSWORD not set, skipping admin seed')
+    console.warn('[seed] AUTH_ADMIN_EMAIL/AUTH_ADMIN_PASSWORD not set or password < 12 chars, skipping admin seed')
     return
   }
 
   const now = Date.now()
   const passwordHash = await hashPassword(password)
+  console.log('[seed] Password hashed, creating admin user...')
 
   // Upsert admin user
   const existing = db
@@ -31,6 +36,7 @@ export async function seedProduction(db: BetterSQLite3Database<typeof schema>) {
       .set({ passwordHash, role: 'admin', isActive: true, updatedAt: now })
       .where(eq(users.id, existing.id))
       .run()
+    console.log('[seed] Admin user updated')
   } else {
     db.insert(users).values({
       id: randomUUID(),
@@ -42,6 +48,7 @@ export async function seedProduction(db: BetterSQLite3Database<typeof schema>) {
       createdAt: now,
       updatedAt: now,
     }).run()
+    console.log('[seed] Admin user created')
   }
 
   // Seed courts if empty
