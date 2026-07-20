@@ -3,11 +3,14 @@
  * (by checking existing tables AND indexes), then applies any pending ones.
  */
 import 'dotenv/config'
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { mkdirSync, readFileSync, readdirSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import Database from 'better-sqlite3'
 
 const databaseUrl = process.env.DATABASE_URL ?? './data/canchas.db'
+if (databaseUrl !== ':memory:') {
+  mkdirSync(dirname(databaseUrl), { recursive: true })
+}
 const db = new Database(databaseUrl)
 db.pragma('foreign_keys = ON')
 db.pragma('journal_mode = WAL')
