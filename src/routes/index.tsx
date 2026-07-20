@@ -1,758 +1,578 @@
-import { useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
 import {
-  AlertCircle,
-  ArrowRight,
-  BarChart3,
-  Bell,
+  createFileRoute,
+  Link,
+  redirect,
+  useNavigate,
+} from '@tanstack/react-router'
+import {
   CalendarDays,
-  CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  LayoutDashboard,
-  Menu,
+  Clock3,
   Package,
-  Plus,
-  Settings,
-  Store,
-  TrendingUp,
-  Trophy,
-  Users,
   Wallet,
-  X,
+  TrendingUp,
+  BarChart3,
+  AlertTriangle,
 } from 'lucide-react'
+import { z } from 'zod'
 
-import { ModeToggle } from '@/components/mode-toggle'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetTitle,
-} from '@/components/ui/sheet'
+import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { cn } from '@/lib/utils'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { getCurrentUser } from '@/features/auth/auth'
+import { getDashboardSummary } from '@/features/dashboard/dashboard'
 
-export const Route = createFileRoute('/')({ component: Dashboard })
+const dateSearchSchema = z.object({
+  date: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
+})
 
-const navItems = [
-  { label: 'Resumen', icon: LayoutDashboard },
-  { label: 'Calendario', icon: CalendarDays, badge: '12' },
-  { label: 'Clientes', icon: Users },
-  { label: 'Quiosco', icon: Store },
-  { label: 'Inventario', icon: Package, badge: '3' },
-  { label: 'Caja y reportes', icon: BarChart3 },
-]
+export const Route = createFileRoute('/')({
+  validateSearch: dateSearchSchema,
+  beforeLoad: async ({ location }) => {
+    const current = await getCurrentUser()
+    if (!current) {
+      throw redirect({
+        href: `/login?redirect=${encodeURIComponent(location.href)}`,
+      })
+    }
+    return { user: current.user }
+  },
+  loaderDeps: ({ search }) => ({ date: search.date }),
+  loader: async ({ deps }) => {
+    const date = deps.date ?? limaDateValue(new Date())
+    const result = await getDashboardSummary({ data: { date } })
+    return result.summary
+  },
+  component: Dashboard,
+})
 
-const dates = [
-  { eyebrow: 'Ayer', day: 'Jueves, 16 de julio', reservations: '9' },
-  { eyebrow: 'Hoy', day: 'Viernes, 17 de julio', reservations: '12' },
-  { eyebrow: 'Mañana', day: 'Sábado, 18 de julio', reservations: '16' },
-]
-
-const stats = [
-  {
-    label: 'Ingresos de hoy',
-    value: 'S/ 1,840.00',
-    note: '+12.5% vs. ayer',
-    icon: Wallet,
-    tone: 'bg-primary text-primary-foreground',
-  },
-  {
-    label: 'Reservas',
-    value: '12',
-    note: '8 confirmadas · 4 pendientes',
-    icon: CalendarDays,
-    tone: 'bg-chart-2 text-primary-foreground',
-  },
-  {
-    label: 'Ocupación',
-    value: '72%',
-    note: '18 de 25 horas disponibles',
-    icon: Clock,
-    tone: 'bg-chart-3 text-primary-foreground',
-  },
-  {
-    label: 'Ventas quiosco',
-    value: 'S/ 396.00',
-    note: '24 operaciones',
-    icon: Store,
-    tone: 'bg-chart-4 text-primary-foreground',
-  },
-]
-
-const reservations = [
-  {
-    time: '08:00',
-    end: '09:30',
-    customer: 'Carlos Mendoza',
-    court: 'Cancha 1',
-    status: 'Confirmada',
-    amount: 'S/ 90.00',
-  },
-  {
-    time: '09:30',
-    end: '11:00',
-    customer: 'María Torres',
-    court: 'Cancha 3',
-    status: 'Pendiente',
-    amount: 'S/ 90.00',
-  },
-  {
-    time: '11:00',
-    end: '12:00',
-    customer: 'Diego Salazar',
-    court: 'Cancha 2',
-    status: 'Confirmada',
-    amount: 'S/ 60.00',
-  },
-  {
-    time: '14:00',
-    end: '15:30',
-    customer: 'Lucía Vega',
-    court: 'Cancha 4',
-    status: 'Confirmada',
-    amount: 'S/ 105.00',
-  },
-]
-
-const paymentMethods = [
-  { label: 'Efectivo', amount: 'S/ 820', width: '72%', color: 'bg-chart-2' },
-  { label: 'Yape', amount: 'S/ 540', width: '48%', color: 'bg-chart-3' },
-  { label: 'Plin', amount: 'S/ 310', width: '28%', color: 'bg-chart-4' },
-  {
-    label: 'Transferencia',
-    amount: 'S/ 170',
-    width: '16%',
-    color: 'bg-chart-5',
-  },
-]
-
-const stockAlerts = [
-  { name: 'Agua San Luis 625 ml', stock: '4 unidades', threshold: 'Mín. 10' },
-  { name: 'Gatorade 500 ml', stock: '3 unidades', threshold: 'Mín. 8' },
-  { name: 'Pelotas Penn x3', stock: '1 unidad', threshold: 'Mín. 4' },
-]
-
-const activity = [
-  {
-    title: 'Pago de reserva registrado',
-    detail: 'Carlos Mendoza · S/ 90.00 · Yape',
-    time: 'Hace 8 min',
-    icon: CheckCircle2,
-  },
-  {
-    title: 'Venta de quiosco',
-    detail: '3 productos · S/ 24.00 · Efectivo',
-    time: 'Hace 21 min',
-    icon: Store,
-  },
-  {
-    title: 'Nueva reserva creada',
-    detail: 'Lucía Vega · Cancha 4 · 14:00',
-    time: 'Hace 36 min',
-    icon: CalendarDays,
-  },
-]
-
-function SidebarContent({
-  activeNav,
-  onNavigate,
-}: {
-  activeNav: string
-  onNavigate: (label: string) => void
-}) {
-  return (
-    <>
-      <div className="flex h-20 items-center gap-3 border-b px-5">
-        <div className="size-10 overflow-hidden rounded-lg shadow-sm">
-          <img src="/logo.png" alt="CanchasApp Logo" className="size-full object-cover" />
-        </div>
-        <div>
-          <p className="text-base font-bold leading-none">CanchasApp</p>
-          <p className="mt-1 text-xs text-sidebar-foreground/60">
-            Centro deportivo
-          </p>
-        </div>
-      </div>
-
-      <nav className="flex-1 space-y-1 p-3" aria-label="Navegación principal">
-        <p className="px-3 pb-2 pt-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/45">
-          Operación
-        </p>
-        {navItems.map((item) => (
-          <Button
-            key={item.label}
-            variant="ghost"
-            className={cn(
-              'w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-              activeNav === item.label &&
-                'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
-            )}
-            onClick={() => onNavigate(item.label)}
-          >
-            <item.icon className="size-[1.1rem]" aria-hidden="true" />
-            {item.label}
-            {item.badge && (
-              <Badge
-                variant="secondary"
-                className={cn(
-                  'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
-                  activeNav === item.label &&
-                    'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
-                )}
-              >
-                {item.badge}
-              </Badge>
-            )}
-          </Button>
-        ))}
-      </nav>
-
-      <div className="border-t p-3">
-        <Button
-          variant="ghost"
-          className="h-auto w-full justify-start gap-3 text-left text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
-          <span className="grid size-9 place-items-center rounded-full bg-sidebar-primary text-sm font-semibold text-sidebar-primary-foreground">
-            FV
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold">
-              Fernando Vega
-            </span>
-            <span className="block text-xs text-sidebar-foreground/55">
-              Administrador
-            </span>
-          </span>
-          <Settings
-            className="size-4 text-sidebar-foreground/55"
-            aria-hidden="true"
-          />
-        </Button>
-      </div>
-    </>
+function limaDateValue(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Lima',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
   )
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+function localDateValue(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function shiftDate(value: string, days: number) {
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+  date.setDate(date.getDate() + days)
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function formatDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Intl.DateTimeFormat('es-PE', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(new Date(year, month - 1, day))
+}
+
+function formatDateTime(timestamp: number) {
+  return new Intl.DateTimeFormat('es-PE', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'America/Lima',
+  }).format(timestamp)
+}
+
+function formatMoney(amountCents: number) {
+  return new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN',
+  }).format(amountCents / 100)
 }
 
 function Dashboard() {
-  const [activeNav, setActiveNav] = useState('Resumen')
-  const [dateIndex, setDateIndex] = useState(1)
-  const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const [reservationOpen, setReservationOpen] = useState(false)
-  const [notice, setNotice] = useState(false)
-  const date = dates[dateIndex]
+  const summary = Route.useLoaderData()
+  const { user } = Route.useRouteContext()
+  const navigate = useNavigate()
 
-  function saveReservation(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setReservationOpen(false)
-    setNotice(true)
+  function setDate(date: string) {
+    void navigate({ to: '/', search: { date } })
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 lg:grid lg:grid-cols-[248px_1fr]">
-      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-        <SheetContent
-          side="left"
-          className="flex w-[248px] flex-col bg-sidebar p-0 text-sidebar-foreground sm:max-w-[248px] lg:hidden"
-        >
-          <SheetTitle className="sr-only">Navegación principal</SheetTitle>
-          <SheetDescription className="sr-only">
-            Accesos a las áreas de operación.
-          </SheetDescription>
-          <SidebarContent
-            activeNav={activeNav}
-            onNavigate={(label) => {
-              setActiveNav(label)
-              setMobileNavOpen(false)
-            }}
-          />
-        </SheetContent>
-      </Sheet>
-
-      <aside className="sticky top-0 hidden h-screen flex-col border-r bg-sidebar text-sidebar-foreground lg:flex">
-        <SidebarContent activeNav={activeNav} onNavigate={setActiveNav} />
-      </aside>
-
-      <main className="min-w-0">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b bg-background/90 px-4 backdrop-blur md:px-6 xl:px-8">
+    <DashboardLayout user={user}>
+      <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            Negocio Core · Operación en vivo
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
+            Resumen operativo
+          </h1>
+          <p className="mt-1 text-sm capitalize text-muted-foreground">
+            {formatDate(summary.date)} · Hora local de Lima
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="icon"
             variant="outline"
-            className="lg:hidden"
-            onClick={() => setMobileNavOpen(true)}
-            aria-label="Abrir menú"
+            aria-label="Día anterior"
+            onClick={() => setDate(shiftDate(summary.date, -1))}
           >
-            <Menu aria-hidden="true" />
+            <ChevronLeft aria-hidden />
           </Button>
-          <div className="hidden max-w-md flex-1 md:block">
-            <Input
-              placeholder="Buscar cliente, reserva o venta..."
-              aria-label="Buscar"
-            />
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <ModeToggle />
-            <Button
-              size="icon"
-              variant="outline"
-              className="relative"
-              aria-label="Notificaciones"
-            >
-              <Bell />
-              <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-destructive" />
-            </Button>
-            <Button
-              className="hidden sm:inline-flex"
-              onClick={() => setReservationOpen(true)}
-            >
-              <Plus data-icon="inline-start" />
-              Nueva reserva
-            </Button>
-          </div>
-        </header>
-
-        <div className="mx-auto max-w-[1600px] p-4 md:p-6 xl:p-8">
-          {notice && (
-            <div className="relative mb-5">
-              <Alert>
-                <CheckCircle2 className="size-5 text-primary" />
-                <AlertDescription>
-                  Reserva creada correctamente.
-                </AlertDescription>
-              </Alert>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="absolute right-2 top-1/2 -translate-y-1/2"
-                onClick={() => setNotice(false)}
-                aria-label="Cerrar aviso"
-              >
-                <X className="size-4" />
+          <Button
+            variant="outline"
+            onClick={() => setDate(limaDateValue(new Date()))}
+          >
+            Hoy
+          </Button>
+          <Button
+            size="icon"
+            variant="outline"
+            aria-label="Día siguiente"
+            onClick={() => setDate(shiftDate(summary.date, 1))}
+          >
+            <ChevronRight aria-hidden />
+          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Seleccionar fecha">
+                <CalendarDays className="size-4" />
               </Button>
-            </div>
-          )}
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={new Date(summary.date + 'T12:00:00')}
+                onSelect={(val) => {
+                  if (val) setDate(localDateValue(val))
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+      </section>
 
-          <section className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-                {date.eyebrow} · Operación en vivo
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <SummaryCard
+          icon={CalendarDays}
+          label="Reservas de Canchas"
+          value={String(summary.reservations.total)}
+          note={`${summary.reservations.confirmed} confirmadas · ${summary.reservations.pending} pendientes · ${summary.reservations.completed} completadas`}
+        />
+        <SummaryCard
+          icon={Clock3}
+          label="Ocupación Horaria"
+          value={`${summary.occupancy.percentage}%`}
+          note={`${summary.occupancy.occupiedSlots} de ${summary.occupancy.totalSlots} bloques reservados`}
+        />
+        <SummaryCard
+          icon={Wallet}
+          label="Ingresos Totales"
+          value={
+            summary.financials
+              ? formatMoney(summary.financials.totalCents)
+              : 'S/ 0.00'
+          }
+          note={
+            summary.financials
+              ? `Efe: ${formatMoney(summary.financials.byMethod.cashCents)} · Yap: ${formatMoney(summary.financials.byMethod.yapeCents)} · Pli: ${formatMoney(summary.financials.byMethod.plinCents)} · Tra: ${formatMoney(summary.financials.byMethod.bankTransferCents)}`
+              : 'Sin cobros registrados'
+          }
+        />
+        <SummaryCard
+          icon={Package}
+          label="Kiosco e Inventario"
+          value={summary.kioskSales ? formatMoney(summary.kioskSales.totalCents) : 'S/ 0.00'}
+          note={`${summary.kioskSales?.count ?? 0} ventas completadas · ${summary.lowStockProductsCount ?? 0} productos sin stock`}
+          warning={(summary.lowStockProductsCount ?? 0) > 0}
+        />
+      </section>
+
+      {/* SECCIÓN DE GRÁFICOS Y MÉTRICAS DETALLADAS */}
+      <section className="mb-6 grid gap-6 md:grid-cols-2">
+        {/* Gráfico 1: Análisis de Ocupación e Ingresos */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <TrendingUp className="size-4 text-primary" />
+              Eficiencia Operativa e Ingresos
+            </CardTitle>
+            <CardDescription>
+              Comparativa de ocupación física de canchas e ingresos monetarios por categoría.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-around p-6">
+            {/* Ocupación Visual (Radial) */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative size-32">
+                <svg className="size-full -rotate-90">
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="52"
+                    className="stroke-muted fill-transparent"
+                    strokeWidth="10"
+                  />
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="52"
+                    className="stroke-primary fill-transparent transition-all duration-500"
+                    strokeWidth="10"
+                    strokeDasharray={2 * Math.PI * 52}
+                    strokeDashoffset={2 * Math.PI * 52 * (1 - summary.occupancy.percentage / 100)}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-foreground tabular-nums">
+                    {summary.occupancy.percentage}%
+                  </span>
+                  <span className="text-[0.65rem] font-medium text-muted-foreground uppercase">
+                    Ocupado
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs font-semibold text-muted-foreground text-center">
+                Ocupación de Canchas
               </p>
-              <h1 className="text-2xl font-bold tracking-tight md:text-3xl">
-                Todo bajo control
-              </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {date.day} · Hora local de Lima
-              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() =>
-                  setDateIndex((current) => Math.max(0, current - 1))
-                }
-                disabled={dateIndex === 0}
-                aria-label="Día anterior"
-              >
-                <ChevronLeft aria-hidden="true" />
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger render={<Button variant="outline" />}>
-                  <CalendarDays aria-hidden="true" />
-                  {date.day.split(',')[0]}
-                  <ChevronDown aria-hidden="true" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {dates.map((option, index) => (
-                    <DropdownMenuItem
-                      key={option.day}
-                      onClick={() => setDateIndex(index)}
-                    >
-                      {option.eyebrow}: {option.day}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                size="icon"
-                variant="outline"
-                onClick={() =>
-                  setDateIndex((current) =>
-                    Math.min(dates.length - 1, current + 1),
-                  )
-                }
-                disabled={dateIndex === dates.length - 1}
-                aria-label="Día siguiente"
-              >
-                <ChevronRight aria-hidden="true" />
-              </Button>
-              <Button
-                className="sm:hidden"
-                size="icon"
-                onClick={() => setReservationOpen(true)}
-                aria-label="Nueva reserva"
-              >
-                <Plus />
-              </Button>
-            </div>
-          </section>
 
-          <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {stats.map((stat) => (
-              <Card key={stat.label}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div
-                      className={cn(
-                        'grid size-10 place-items-center rounded-full',
-                        stat.tone,
-                      )}
-                    >
-                      <stat.icon className="size-5" aria-hidden="true" />
-                    </div>
-                    {stat.label === 'Ingresos de hoy' && (
-                      <span className="flex items-center gap-1 text-xs font-semibold text-foreground">
-                        <TrendingUp className="size-3.5" aria-hidden="true" />
-                        12.5%
-                      </span>
+            {/* Categorías (Alquileres vs Kiosco) */}
+            <div className="flex-1 max-w-[260px] space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-medium">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span className="size-2.5 rounded-full bg-primary" />
+                    Alquiler de Canchas
+                  </span>
+                  <span className="font-bold">
+                    {formatMoney(summary.financials?.byCategory?.rentalsCents ?? 0)}
+                  </span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-primary"
+                    style={{
+                      width: `${
+                        summary.financials?.totalCents
+                          ? Math.round(
+                              ((summary.financials.byCategory?.rentalsCents ?? 0) /
+                                summary.financials.totalCents) *
+                                100,
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-medium">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span className="size-2.5 rounded-full bg-emerald-500" />
+                    Ventas del Kiosco
+                  </span>
+                  <span className="font-bold">
+                    {formatMoney(summary.financials?.byCategory?.kioskCents ?? 0)}
+                  </span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500"
+                    style={{
+                      width: `${
+                        summary.financials?.totalCents
+                          ? Math.round(
+                              ((summary.financials.byCategory?.kioskCents ?? 0) /
+                                summary.financials.totalCents) *
+                                100,
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {summary.lowStockProductsCount && summary.lowStockProductsCount > 0 ? (
+                <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-amber-600 dark:text-amber-500 mt-2">
+                  <AlertTriangle className="size-4 shrink-0 text-amber-500" />
+                  <span>
+                    Hay <strong>{summary.lowStockProductsCount}</strong> productos con stock crítico en el Kiosco.
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico 2: Métodos de Pago Distribución */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <BarChart3 className="size-4 text-primary" />
+              Distribución de Métodos de Pago
+            </CardTitle>
+            <CardDescription>
+              Preferencia de pago y recaudación para el día de hoy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 flex flex-col justify-center h-[160px] sm:h-full gap-4">
+            {summary.financials && summary.financials.totalCents > 0 ? (() => {
+              const total = summary.financials.totalCents
+              const cash = summary.financials.byMethod.cashCents
+              const yape = summary.financials.byMethod.yapeCents
+              const plin = summary.financials.byMethod.plinCents
+              const trans = summary.financials.byMethod.bankTransferCents
+
+              const pCash = Math.round((cash / total) * 100)
+              const pYape = Math.round((yape / total) * 100)
+              const pPlin = Math.round((plin / total) * 100)
+              const pTrans = 100 - pCash - pYape - pPlin
+
+              return (
+                <div className="space-y-4">
+                  {/* Segmented bar chart */}
+                  <div className="h-5 w-full rounded-md overflow-hidden flex bg-muted">
+                    {cash > 0 && (
+                      <div
+                        className="h-full bg-emerald-500 transition-all"
+                        style={{ width: `${pCash}%` }}
+                        title={`Efectivo: ${pCash}%`}
+                      />
+                    )}
+                    {yape > 0 && (
+                      <div
+                        className="h-full bg-purple-500 transition-all"
+                        style={{ width: `${pYape}%` }}
+                        title={`Yape: ${pYape}%`}
+                      />
+                    )}
+                    {plin > 0 && (
+                      <div
+                        className="h-full bg-cyan-500 transition-all"
+                        style={{ width: `${pPlin}%` }}
+                        title={`Plin: ${pPlin}%`}
+                      />
+                    )}
+                    {trans > 0 && (
+                      <div
+                        className="h-full bg-amber-500 transition-all"
+                        style={{ width: `${pTrans}%` }}
+                        title={`Transferencia: ${pTrans}%`}
+                      />
                     )}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm font-medium text-muted-foreground">
-                    {stat.label}
-                  </p>
-                  <p className="mt-1 text-2xl font-bold tracking-tight">
-                    {stat.value}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {stat.note}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </section>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.75fr)]">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <CardTitle>
-                      <h2>Próximas reservas</h2>
-                    </CardTitle>
-                    <CardDescription>
-                      {date.reservations} reservas programadas para el día
-                    </CardDescription>
+                  {/* Legend Grid */}
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="flex flex-col border-l-2 border-emerald-500 pl-2">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Efectivo</span>
+                      <span className="text-xs font-bold">{pCash}%</span>
+                      <span className="text-[10px] text-muted-foreground">{formatMoney(cash)}</span>
+                    </div>
+                    <div className="flex flex-col border-l-2 border-purple-500 pl-2">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Yape</span>
+                      <span className="text-xs font-bold">{pYape}%</span>
+                      <span className="text-[10px] text-muted-foreground">{formatMoney(yape)}</span>
+                    </div>
+                    <div className="flex flex-col border-l-2 border-cyan-500 pl-2">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Plin</span>
+                      <span className="text-xs font-bold">{pPlin}%</span>
+                      <span className="text-[10px] text-muted-foreground">{formatMoney(plin)}</span>
+                    </div>
+                    <div className="flex flex-col border-l-2 border-amber-500 pl-2">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Transferencia</span>
+                      <span className="text-xs font-bold">{pTrans}%</span>
+                      <span className="text-[10px] text-muted-foreground">{formatMoney(trans)}</span>
+                    </div>
                   </div>
-                  <Button variant="ghost" size="sm">
-                    Ver calendario <ArrowRight data-icon="inline-end" />
-                  </Button>
                 </div>
-              </CardHeader>
+              )
+            })() : (
+              <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+                No hay transacciones ni cobros registrados para hoy.
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </section>
 
-              <CardContent>
-                <div className="space-y-3">
-                  {reservations.map((reservation, index) => (
-                    <article
-                      key={`${reservation.time}-${reservation.court}`}
-                      className="grid grid-cols-[56px_1fr_auto] items-center gap-3 rounded-lg border p-3 md:grid-cols-[72px_1fr_120px_100px]"
-                    >
-                      <div>
-                        <p className="text-sm font-bold tabular-nums">
-                          {reservation.time}
-                        </p>
-                        <p className="text-xs tabular-nums text-muted-foreground">
-                          {reservation.end}
-                        </p>
-                      </div>
-                      <div className="min-w-0 border-l pl-3 md:pl-4">
-                        <p className="truncate text-sm font-semibold">
-                          {reservation.customer}
-                        </p>
-                        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                          <span
-                            className={cn(
-                              'size-2 rounded-full',
-                              [
-                                'bg-chart-2',
-                                'bg-chart-3',
-                                'bg-chart-4',
-                                'bg-chart-5',
-                              ][index],
-                            )}
-                          />
-                          {reservation.court}
-                        </div>
-                      </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Próximas reservas</CardTitle>
+            <CardDescription>
+              Reservas pendientes y confirmadas para esta fecha.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {summary.upcoming.length === 0 ? (
+              <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+                No hay reservas próximas para esta fecha.
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {summary.upcoming.map((reservation) => (
+                  <Link
+                    key={reservation.id}
+                    to="/reservations/$reservationId"
+                    params={{ reservationId: reservation.id }}
+                    className="grid gap-3 rounded-lg border p-4 transition-colors hover:bg-muted/50 sm:grid-cols-[90px_1fr_auto] sm:items-center"
+                  >
+                    <div>
+                      <p className="font-semibold tabular-nums">
+                        {formatTime(reservation.startsAt)}
+                      </p>
+                      <p className="text-xs tabular-nums text-muted-foreground">
+                        hasta {formatTime(reservation.endsAt)}
+                      </p>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">
+                        {reservation.customerName}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {reservation.courtName}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
                       <Badge
                         variant={
-                          reservation.status === 'Confirmada'
+                          reservation.status === 'confirmed'
                             ? 'success'
                             : 'secondary'
                         }
-                        className="hidden md:inline-flex"
                       >
-                        {reservation.status}
+                        {reservation.status === 'confirmed'
+                          ? 'Confirmada'
+                          : 'Pendiente'}
                       </Badge>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold tabular-nums">
-                          {reservation.amount}
-                        </p>
-                        <Button variant="link" size="sm">
-                          Detalles
-                        </Button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <CardTitle>
-                      <h2>Ingresos por método</h2>
-                    </CardTitle>
-                    <CardDescription>Cobros válidos de hoy</CardDescription>
-                  </div>
-                  <Badge variant="secondary">PEN</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-6 flex items-end gap-2">
-                  <span className="text-3xl font-bold tracking-tight">
-                    S/ 1,840
-                  </span>
-                  <span className="mb-1 text-xs text-muted-foreground">
-                    neto
-                  </span>
-                </div>
-                <div className="space-y-4">
-                  {paymentMethods.map((method) => (
-                    <div key={method.label}>
-                      <div className="mb-1.5 flex justify-between text-xs">
-                        <span className="font-medium">{method.label}</span>
-                        <span className="font-semibold tabular-nums">
-                          {method.amount}
-                        </span>
-                      </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-muted">
-                        <div
-                          className={cn('h-full rounded-full', method.color)}
-                          style={{ width: method.width }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button variant="outline">Abrir reporte de caja</Button>
-              </CardFooter>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <CardTitle>
-                      <h2>Alertas de inventario</h2>
-                    </CardTitle>
-                    <CardDescription>
-                      Productos bajo el umbral mínimo
-                    </CardDescription>
-                  </div>
-                  <span className="grid size-8 place-items-center rounded-full bg-destructive/10 text-destructive">
-                    <AlertCircle className="size-4" aria-hidden="true" />
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="divide-y">
-                  {stockAlerts.map((item) => (
-                    <div
-                      key={item.name}
-                      className="flex items-center gap-3 py-3.5 first:pt-0 last:pb-0"
-                    >
-                      <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
-                        <Package className="size-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">
-                          {item.name}
-                        </p>
-                        <p className="mt-0.5 text-xs text-destructive">
-                          {item.stock}
-                        </p>
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        {item.threshold}
+                      <span className="text-sm font-semibold tabular-nums">
+                        {formatMoney(reservation.finalAmountCents)}
                       </span>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </Link>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 flex justify-end">
+              <Button variant="outline" render={<Link to="/calendar" />}>
+                Ver calendario
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <CardTitle>
-                      <h2>Actividad reciente</h2>
-                    </CardTitle>
-                    <CardDescription>
-                      Trazabilidad de la operación
-                    </CardDescription>
+        <Card>
+          <CardHeader>
+            <CardTitle>Actividad reciente</CardTitle>
+            <CardDescription>
+              Acciones registradas por la operación.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {summary.activity.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                Aún no hay actividad registrada.
+              </p>
+            ) : (
+              <div className="divide-y">
+                {summary.activity.map((item) => (
+                  <div key={item.id} className="py-3 first:pt-0 last:pb-0">
+                    <p className="text-sm font-medium">{item.action}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {item.detail}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {item.actorName ?? 'Sistema'} ·{' '}
+                      {formatDateTime(item.createdAt)}
+                    </p>
                   </div>
-                  <Button size="sm" variant="ghost">
-                    Ver auditoría
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="divide-y">
-                  {activity.map((item) => (
-                    <div
-                      key={item.title}
-                      className="flex items-start gap-3 py-3.5 first:pt-0 last:pb-0"
-                    >
-                      <div className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-full bg-muted">
-                        <item.icon className="size-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium">{item.title}</p>
-                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                          {item.detail}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-[0.7rem] text-muted-foreground">
-                        {item.time}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </main>
-
-      <Dialog open={reservationOpen} onOpenChange={setReservationOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Nueva reserva</DialogTitle>
-            <DialogDescription>
-              Los horarios se validarán antes de guardar.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            onSubmit={saveReservation}
-            className="grid gap-4 sm:grid-cols-2"
-          >
-            <label className="grid gap-2 text-sm font-medium sm:col-span-2">
-              Cliente
-              <Input
-                required
-                name="customer"
-                autoComplete="name"
-                defaultValue="Andrea Rojas"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Cancha
-              <Select name="court" defaultValue="court-1">
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una cancha" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="court-1">Cancha 1</SelectItem>
-                  <SelectItem value="court-2">Cancha 2</SelectItem>
-                  <SelectItem value="court-3">Cancha 3</SelectItem>
-                  <SelectItem value="court-4">Cancha 4</SelectItem>
-                </SelectContent>
-              </Select>
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Fecha
-              <Input type="date" name="date" defaultValue="2026-07-17" />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Inicio
-              <Input
-                type="time"
-                name="startTime"
-                step="1800"
-                defaultValue="16:00"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Fin
-              <Input
-                type="time"
-                name="endTime"
-                step="1800"
-                defaultValue="17:30"
-              />
-            </label>
-            <div className="flex items-center justify-between rounded-lg bg-muted p-3 sm:col-span-2">
-              <span className="text-sm text-muted-foreground">
-                Cotización estimada
-              </span>
-              <span className="font-bold">S/ 90.00</span>
-            </div>
-            <div className="sm:col-span-2">
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setReservationOpen(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit">Crear reserva</Button>
-              </DialogFooter>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </DashboardLayout>
   )
+}
+
+function SummaryCard({
+  icon: Icon,
+  label,
+  value,
+  note,
+  muted = false,
+  warning = false,
+}: {
+  icon: typeof CalendarDays
+  label: string
+  value: string
+  note: string
+  muted?: boolean
+  warning?: boolean
+}) {
+  return (
+    <Card className={cn(warning && "border-amber-500/35 bg-amber-500/5")}>
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between">
+          <span className={cn(
+            "grid size-10 place-items-center rounded-full text-primary",
+            warning ? "bg-amber-500/10 text-amber-500" : "bg-primary/10"
+          )}>
+            <Icon className="size-5" aria-hidden />
+          </span>
+          {muted && <Badge variant="secondary">En preparación</Badge>}
+          {warning && (
+            <Badge className="bg-amber-500 text-white hover:bg-amber-600 border-transparent text-[10px] py-0.5 px-1.5 font-bold">
+              Stock Crítico
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm font-medium text-muted-foreground">{label}</p>
+        <p className="mt-1 text-2xl font-bold tracking-tight">{value}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{note}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function formatTime(timestamp: number) {
+  return new Intl.DateTimeFormat('es-PE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'America/Lima',
+  }).format(timestamp)
 }

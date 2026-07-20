@@ -1,0 +1,104 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1784383723305,
+      "tag": "0000_orange_hardball",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1784384238741,
+      "tag": "0001_cuddly_human_robot",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784384315931,
+      "tag": "0002_misty_may_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1784385000000,
+      "tag": "0003_auth_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1784386000000,
+      "tag": "0004_login_attempts",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1784387000000,
+      "tag": "0005_login_attempt_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1784388000000,
+      "tag": "0006_user_email_canonical",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1784396156433,
+      "tag": "0007_numerous_human_torch",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784488437718,
+      "tag": "0008_simple_mentallo",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1784494212667,
+      "tag": "0009_oval_bullseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1784495012083,
+      "tag": "0010_past_union_jack",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1784549737203,
+      "tag": "0011_lean_solo",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1784551930416,
+      "tag": "0012_lean_slayback",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1784562282007,
+      "tag": "0013_zippy_stephen_strange",
+      "breakpoints": true
+    }
+  ]
+}

@@ -4,6 +4,35 @@ Sistema para administrar canchas deportivas, reservas, pagos, quiosco, inventari
 
 Este plan reemplaza el backlog original por entregas verticales verificables. El objetivo no es completar muchas pantallas, sino entregar un sistema pequeño que pueda reservar, cobrar, auditar y operar sin perder datos ni dinero.
 
+## Estado actual
+
+Actualizado: 20 de julio de 2026, rama `feat-3`.
+
+Ya implementado:
+
+- Monolito TanStack Start con server functions tipadas, sin API REST interna.
+- SQLite con Drizzle ORM, `better-sqlite3`, migraciones versionadas, claves
+  foraneas, WAL y `busy_timeout`.
+- Esquema inicial de usuarios, sesiones, intentos de login, auditoria,
+  canchas y horarios.
+- Login, registro de usuario, sesiones con cookies, logout, roles y guards.
+- Rate limiting de login, hash Argon2, validacion Zod y errores serializables.
+- Seed de desarrollo para admin y cuatro canchas.
+- CRUD de canchas, estados operativos, horarios y consulta de disponibilidad.
+- Pantalla protegida de canchas y pruebas unitarias/de migraciones.
+- Clientes, creación, detalle, edición y ciclo de vida de reservas.
+- Idempotencia de creación y protección contra solapamientos con `BEGIN IMMEDIATE`.
+- Reglas tarifarias, cotización por bloques de 30 minutos y snapshots de precio.
+- Dashboard operativo conectado a reservas, ocupación y auditoría.
+- Fundaciones de pagos: métodos, estados, tabla y contrato de entrada validados;
+  todavía no existe registro de pagos.
+
+Todavía faltan cobro de reservas, quiosco, inventario, caja, reportes
+financieros, pruebas end-to-end y el endurecimiento de producción.
+
+El siguiente objetivo es implementar el cobro idempotente de reservas. Después
+seguirán quiosco e inventario, y finalmente caja, reportes y cierres financieros.
+
 ## 1. Objetivos
 
 ### Objetivo principal
@@ -41,12 +70,13 @@ Permitir que un administrador gestione la operacion diaria de un complejo con cu
 
 ## 2. Decisiones de dominio
 
-Estas decisiones deben aprobarse antes de escribir las migraciones.
+Estas decisiones definen el dominio y deben aprobarse antes de ampliar las
+migraciones existentes.
 
 ### Tiempo y zona horaria
 
 - Zona horaria operativa: `America/Lima`.
-- La base de datos almacena instantes en `timestamptz`.
+- La base de datos almacena instantes como epoch milliseconds UTC en columnas `integer` de SQLite.
 - La interfaz recibe y muestra hora local.
 - Las reservas se modelan como rangos semiabiertos: `[inicio, fin)`.
 - La duracion minima es de 30 minutos.
@@ -92,7 +122,7 @@ Yape, Plin y transferencia son metodos manuales. El sistema registra el metodo y
 ### Moneda y dinero
 
 - Moneda: `PEN`.
-- Usar `numeric(12,2)` en PostgreSQL, nunca `float`.
+- Guardar dinero como centimos de PEN en columnas `integer` de SQLite, nunca `float`.
 - Los precios de una reserva y de una linea de venta se congelan al confirmar la operacion.
 - Todos los importes deben ser no negativos salvo ajustes internos expresamente modelados.
 
@@ -110,15 +140,15 @@ Un cliente no es lo mismo que un usuario del sistema. La primera version puede t
 
 ### Reglas
 
-- El frontend oculta acciones no permitidas, pero la autorizacion real vive en el backend.
-- Cada endpoint administrativo valida autenticacion y permiso.
+- La interfaz oculta acciones no permitidas, pero la autorizacion real vive en el servidor.
+- Cada server function administrativa valida autenticacion y permiso.
 - Un descuento manual requiere permiso `reservation:override_price`.
 - Una anulacion o devolucion requiere permiso especifico y motivo.
 - Las acciones financieras guardan usuario, fecha, motivo y valores anterior/nuevo cuando corresponda.
 
 ## 4. Modelo de datos minimo
 
-Todas las tablas deben incluir `id`, `created_at`, `updated_at` cuando aplique. Usar UUID o bigint consistentemente; preferir UUID si el sistema tendra integraciones futuras.
+Todas las tablas deben incluir `id`, `created_at`, `updated_at` cuando aplique. Los identificadores son UUID guardados como `text`. Los instantes son epoch milliseconds UTC en columnas `integer`, las fechas de negocio son texto `YYYY-MM-DD`, los booleanos son `0`/`1` con `CHECK` y el dinero se expresa en centimos mediante `integer`.
 
 ### `users`
 
@@ -131,6 +161,17 @@ Todas las tablas deben incluir `id`, `created_at`, `updated_at` cuando aplique. 
 - `last_login_at`
 
 Nunca almacenar contrasenas en texto plano.
+
+### `sessions`
+
+- `id`
+- `user_id`
+- `token_hash` unico
+- `expires_at`
+- `last_seen_at`
+- `created_at`
+
+La cookie contiene el token opaco; SQLite guarda solo su hash. Cerrar sesion elimina o revoca la sesion y un usuario inactivo no puede seguir usandola.
 
 ### `courts`
 
@@ -191,7 +232,7 @@ Las reglas no deben solaparse ambiguamente para la misma cancha, dia y periodo d
 - `cancelled_at` nullable
 - `cancellation_reason` nullable
 
-La base de datos debe impedir solapamientos para reservas en estados `pending` y `confirmed`. Implementar una restriccion `EXCLUDE USING gist` sobre un rango de tiempo y `court_id`, con una condicion por estado.
+SQLite no tiene exclusion constraints. Para reservas en estados `pending` y `confirmed`, crear o reprogramar debe obtener primero el bloqueo de escritura con `BEGIN IMMEDIATE`, comprobar cruces dentro de esa transaccion e insertar antes de liberarla. La condicion de cruce es `existing.starts_at < requested.ends_at AND existing.ends_at > requested.starts_at`.
 
 ### `payments`
 
@@ -297,39 +338,60 @@ Los snapshots evitan que editar un producto reescriba el historial financiero.
 
 No guardar secretos ni contrasenas en la auditoria.
 
+### `idempotency_keys`
+
+- `id`
+- `scope`
+- `actor_user_id`
+- `key`
+- `request_hash`
+- `status`: `processing`, `completed`
+- `result_entity_type` nullable
+- `result_entity_id` nullable
+- `created_at`
+- `completed_at` nullable
+
+La combinacion `scope`, `actor_user_id` y `key` es unica. Repetir una clave completada con el mismo payload devuelve la operacion original; reutilizarla con otro payload se rechaza.
+
 ## 5. Arquitectura tecnica
 
-### Backend
+`docs/arch.md` es la fuente de verdad para las decisiones arquitectonicas. La implementacion sigue un monolito modular: una sola aplicacion TanStack Start contiene rutas, UI, server functions, reglas de dominio y persistencia.
 
-- Node.js con TypeScript.
-- Framework HTTP ya elegido por el equipo; no mezclar estilos.
-- PostgreSQL como fuente de verdad.
-- Migraciones versionadas y ejecutadas en CI/deploy.
-- Validacion de request con un esquema centralizado.
-- Capas simples: rutas, validacion, servicio de dominio, repositorio/queries.
-- Errores con formato uniforme y `request_id`.
+### Aplicacion
 
-### Frontend
+- Node.js, React y TypeScript estricto con TanStack Start.
+- TanStack Router para rutas, loaders, SSR y proteccion de navegacion.
+- Server functions como RPC tipado entre navegador y servidor; no existe una API REST interna.
+- Validacion runtime en el limite de cada server function.
+- Organizacion por funcionalidad: autenticacion, canchas, reservas, tarifas, ventas, inventario, caja, reportes y auditoria.
+- Operaciones de dominio extraidas solo cuando contienen reglas, varias escrituras o requieren prueba aislada.
+- Drizzle ORM accede directamente a SQLite; no se agregan repositorios genericos ni capas que solo reenvian llamadas.
+- Loaders para estado remoto de ruta y estado React local para formularios, modales y carrito.
+- Fechas, zona horaria y dinero centralizados en modulos compartidos.
+- Errores serializables con codigo estable y `request_id`.
 
-- React con TypeScript.
-- Router con rutas protegidas por permiso.
-- Cliente HTTP centralizado.
-- Estado remoto separado del estado local del carrito y formularios.
-- Formularios con validacion compartida con el contrato de API cuando sea viable.
-- Fechas y dinero formateados en un unico modulo.
+### Persistencia
+
+- SQLite es la fuente de verdad y vive en almacenamiento persistente local al proceso.
+- Drizzle define esquema, consultas y migraciones versionadas.
+- Activar claves foraneas, WAL y `busy_timeout` en cada conexion.
+- Un solo proceso escritor; no compartir el archivo mediante NFS ni entre replicas.
+- Transacciones breves con bloqueo de escritura inmediato para reservas, ventas, pagos y cierres.
+- Bases SQLite temporales con migraciones reales para pruebas de integracion.
 
 ### Infraestructura
 
-- Docker Compose para desarrollo local.
-- PostgreSQL separado del proceso de aplicacion.
-- Nginx sirviendo frontend y haciendo proxy al backend.
-- HTTPS con renovacion automatica.
+- Un proceso Node sirve la aplicacion completa detras de un proxy HTTPS.
+- El archivo SQLite, WAL y backups viven en almacenamiento persistente controlado.
 - Variables de entorno fuera del repositorio.
-- Staging separado de produccion.
+- Staging separado de produccion, cada uno con su propia base SQLite.
+- Backups realizados con una herramienta consciente de SQLite/WAL y copiados fuera del host.
 
-## 6. Contratos de API
+## 6. Contratos de server functions
 
-Todos los endpoints deben documentarse con OpenAPI o equivalente. El formato de error minimo:
+Las server functions son el contrato de la aplicacion. Sus entradas se validan en runtime aunque TypeScript las infiera, y sus resultados contienen solo datos serializables necesarios para la UI. No se mantiene OpenAPI ni un cliente HTTP paralelo para consumo interno.
+
+El formato logico de error minimo es:
 
 ```json
 {
@@ -344,73 +406,72 @@ Todos los endpoints deben documentarse con OpenAPI o equivalente. El formato de 
 
 ### Autenticacion
 
-- `POST /auth/login`
-- `POST /auth/refresh` si se usan refresh tokens
-- `POST /auth/logout`
-- `GET /me`
-- `POST /users` admin
-- `GET /users` admin
-- `PATCH /users/:id` admin
+- `login`
+- `logout`
+- `getCurrentUser`
+- `createUser` admin
+- `listUsers` admin
+- `updateUser` admin
 
-El access token debe tener expiracion corta. El almacenamiento del token en frontend debe seguir una decision documentada; evitar exponer refresh tokens a JavaScript si se usan cookies httpOnly.
+La autenticacion usa una cookie de sesion `httpOnly`, `secure` en produccion y `sameSite=lax`. El servidor guarda un hash del token y su expiracion; no se exponen tokens de sesion a JavaScript.
 
 ### Canchas y configuracion
 
-- `GET /courts`
-- `POST /courts` admin
-- `PATCH /courts/:id` admin
-- `GET /courts/:id/availability`
-- `GET /court-hours`
-- `PUT /court-hours` admin
-- `GET /rate-rules`
-- `POST /rate-rules` admin
-- `PATCH /rate-rules/:id` admin
-- `POST /rate-rules/quote`
+- `listCourts`
+- `createCourt` admin
+- `updateCourt` admin
+- `listAvailability`
+- `listCourtHours`
+- `updateCourtHours` admin
+- `listRateRules`
+- `createRateRule` admin
+- `updateRateRule` admin
+- `quoteReservation`
 
-`quote` calcula una cotizacion, pero el backend vuelve a calcular el precio al crear o confirmar la reserva. El frontend nunca es autoridad financiera.
+`quoteReservation` calcula una cotizacion, pero el servidor vuelve a calcular el precio al crear o confirmar la reserva. El navegador nunca es autoridad financiera.
 
 ### Clientes y reservas
 
-- `GET /customers?search=`
-- `POST /customers`
-- `PATCH /customers/:id`
-- `GET /reservations?from=&to=&courtId=&status=`
-- `GET /reservations/:id`
-- `POST /reservations`
-- `PATCH /reservations/:id`
-- `POST /reservations/:id/confirm`
-- `POST /reservations/:id/cancel`
-- `POST /reservations/:id/complete`
-- `POST /reservations/:id/no-show`
+- `searchCustomers`
+- `createCustomer`
+- `updateCustomer`
+- `listReservations`
+- `getReservation`
+- `createReservation`
+- `updateReservation`
+- `confirmReservation`
+- `cancelReservation`
+- `completeReservation`
+- `markReservationNoShow`
 
-Crear reserva debe aceptar una clave de idempotencia. La respuesta de conflicto debe ser `409 Conflict`, no un `500` generico.
+Crear reserva debe aceptar una clave de idempotencia. Un cruce devuelve el codigo estable `RESERVATION_CONFLICT`, no un error generico.
 
 ### Ventas e inventario
 
-- `GET /categories`
-- `POST /categories` admin
-- `PATCH /categories/:id` admin
-- `GET /products?active=true`
-- `POST /products` admin
-- `PATCH /products/:id` admin
-- `POST /products/:id/stock-adjustments` admin
-- `GET /stock-movements` admin/viewer
-- `POST /sales`
-- `GET /sales?from=&to=&status=`
-- `GET /sales/:id`
-- `POST /sales/:id/void` admin
+- `listCategories`
+- `createCategory` admin
+- `updateCategory` admin
+- `listProducts`
+- `createProduct` admin
+- `updateProduct` admin
+- `adjustStock` admin
+- `listStockMovements` admin/viewer
+- `createSale`
+- `listSales`
+- `getSale`
+- `voidSale` admin
 
-`POST /sales` debe recibir lineas, metodo de pago, referencia opcional e idempotency key. Producto, precio y stock se validan en backend.
+`createSale` recibe lineas, metodo de pago, referencia opcional e idempotency key. Producto, precio y stock se validan en servidor.
 
 ### Caja y reportes
 
-- `POST /cash-registers/open`
-- `GET /cash-registers/current`
-- `GET /cash-registers/:id/summary`
-- `POST /cash-registers/:id/close`
-- `GET /reports/revenue?businessDate=`
-- `GET /reports/revenue?from=&to=&groupBy=method`
-- `GET /audit-logs?entityType=&entityId=` admin
+- `openCashRegister`
+- `getCurrentCashRegister`
+- `getCashRegisterSummary`
+- `closeCashRegister`
+- `getDailyRevenueReport`
+- `getRevenueReport`
+- `listAuditLogs` admin
 
 El reporte debe distinguir ventas completadas, anulaciones y devoluciones. Una suma simple de tablas no es suficiente.
 
@@ -422,17 +483,17 @@ El reporte debe distinguir ventas completadas, anulaciones y devoluciones. Una s
 2. Resolver la fecha/hora en `America/Lima`.
 3. Validar horario operativo y estado de cancha.
 4. Calcular cotizacion usando reglas vigentes.
-5. Iniciar transaccion.
-6. Insertar reserva.
-7. Dejar que PostgreSQL rechace solapamientos mediante exclusion constraint.
-8. Registrar auditoria.
-9. Confirmar transaccion.
+5. Iniciar transaccion SQLite con bloqueo de escritura inmediato.
+6. Volver a validar cancha, horario, tarifa y cruces dentro de la transaccion.
+7. Insertar reserva y snapshot de precio.
+8. Registrar auditoria e idempotencia.
+9. Confirmar transaccion cuanto antes.
 
-No implementar anti-cruces solo con un `SELECT` previo.
+No implementar anti-cruces con un `SELECT` previo fuera de la transaccion. SQLite debe obtener el bloqueo antes de comprobar disponibilidad.
 
 ### Confirmar pago de reserva
 
-1. Bloquear la reserva con `FOR UPDATE`.
+1. Iniciar transaccion SQLite con bloqueo de escritura inmediato y leer la reserva.
 2. Verificar que el estado permita confirmacion.
 3. Verificar que el monto coincida con el monto vigente.
 4. Crear pago y movimiento de caja.
@@ -443,7 +504,7 @@ No implementar anti-cruces solo con un `SELECT` previo.
 ### Registrar venta
 
 1. Validar lineas no vacias y cantidades enteras positivas.
-2. Bloquear productos involucrados con `FOR UPDATE` en orden estable.
+2. Iniciar transaccion SQLite con bloqueo de escritura inmediato y leer los productos involucrados.
 3. Verificar stock suficiente.
 4. Copiar nombres y precios a `sale_items`.
 5. Crear venta y pago.
@@ -481,7 +542,7 @@ Duracion sugerida: 3 a 5 dias.
 - Aprobar zona horaria y moneda.
 - Dibujar estados de reserva, pago, venta y caja.
 - Crear diagrama de entidades y migraciones iniciales.
-- Definir OpenAPI y formato de errores.
+- Definir contratos de server functions, esquemas de entrada y formato de errores.
 - Crear repositorio, convenciones, ramas y reglas de pull request.
 - Configurar linter, formatter, TypeScript estricto y hooks de calidad.
 
@@ -489,56 +550,64 @@ Duracion sugerida: 3 a 5 dias.
 
 - Documento de decisiones.
 - Modelo de datos revisado.
-- Contrato API inicial.
+- Contratos iniciales de server functions.
 - Wireframes de flujo de reserva y venta.
 - Riesgos conocidos y decisiones pendientes.
 
 ### Sprint 1: Base tecnica, login y despliegue de staging
 
-#### Tareas Dev A
+**Estado: implementado parcialmente en desarrollo.** Faltan health check,
+backup/restauración, staging y pipeline de CI.
 
-- Crear estructura base del frontend.
+#### Aplicacion y experiencia
+
+- Crear estructura del monolito modular por funcionalidades.
 - Crear layout, navegacion y manejo de sesion.
 - Crear pantalla de login y estados de carga/error.
 - Crear componentes base de formulario, tabla, modal y alerta.
+- Proteger rutas autenticadas con TanStack Router.
 
-#### Tareas Dev B
+#### Servidor y datos
 
-- Crear backend base y health check.
-- Configurar PostgreSQL local y migraciones.
-- Crear tablas de usuarios, auditoria y configuracion.
-- Implementar hash de contrasenas y login.
-- Implementar middleware de autenticacion y autorizacion.
-- Crear manejo uniforme de errores y request id.
+- Configurar Drizzle, SQLite, WAL, claves foraneas y `busy_timeout`.
+- Crear y probar migraciones de usuarios, sesiones, auditoria y configuracion.
+- Implementar hash de contrasenas, cookie de sesion y server functions de autenticacion.
+- Implementar guards compartidos de autenticacion y autorizacion.
+- Crear manejo uniforme de errores y `request_id`.
+- Crear health check de proceso y base de datos.
 
-#### Tareas compartidas
+#### Entrega
 
-- Docker Compose local.
 - Seed de usuario admin solo para desarrollo.
 - Pipeline de lint, typecheck, tests y build.
-- Ambiente staging con secretos independientes.
+- Ambiente staging con secretos y archivo SQLite independientes.
+- Backup y restauracion inicial de SQLite probados.
 
 #### Criterios de aceptacion
 
 - Un usuario puede iniciar sesion y cerrar sesion.
-- Una ruta protegida rechaza requests sin autenticacion.
+- Una ruta y una server function protegidas rechazan llamadas sin autenticacion.
 - Un operador no puede ejecutar una accion de admin.
 - `GET /health` verifica aplicacion y base de datos.
 - El mismo commit puede levantar localmente con instrucciones documentadas.
 
 ### Sprint 2: Canchas, horarios y calendario de lectura
 
-#### Tareas Dev A
+**Estado: implementado en desarrollo.** CRUD de canchas, estados, horarios,
+disponibilidad, pantalla protegida, calendario responsive y pruebas base están
+disponibles.
+
+#### Aplicacion y experiencia
 
 - Crear shell de navegacion y selector de fecha.
 - Implementar estados visuales de cancha.
 - Crear calendario responsive con estados de carga, vacio y error.
 
-#### Tareas Dev B
+#### Servidor y datos
 
-- Crear tablas y endpoints de canchas.
+- Crear tablas y server functions de canchas.
 - Crear configuracion de horarios.
-- Crear endpoints de disponibilidad.
+- Crear server functions de disponibilidad.
 - Crear pruebas de permisos y validacion.
 
 #### Criterios de aceptacion
@@ -551,7 +620,9 @@ Duracion sugerida: 3 a 5 dias.
 
 ### Sprint 3: Reservas end-to-end
 
-#### Tareas Dev A
+**Estado: implementado en desarrollo; falta completar E2E.**
+
+#### Aplicacion y experiencia
 
 - Modal de nueva reserva.
 - Busqueda/alta de cliente.
@@ -559,11 +630,11 @@ Duracion sugerida: 3 a 5 dias.
 - Acciones de confirmar, cancelar, completar y no-show.
 - Vista de detalle de reserva.
 
-#### Tareas Dev B
+#### Servidor y datos
 
 - Tablas de clientes y reservas.
-- Restriccion PostgreSQL contra solapamientos.
-- Endpoints de ciclo de vida.
+- Transaccion SQLite con bloqueo inmediato contra solapamientos.
+- Server functions del ciclo de vida.
 - Idempotencia para creacion.
 - Auditoria de cambios.
 - Pruebas de concurrencia.
@@ -571,40 +642,50 @@ Duracion sugerida: 3 a 5 dias.
 #### Criterios de aceptacion
 
 - Se crea una reserva valida desde el calendario.
-- Dos requests simultaneos para el mismo rango no producen dos reservas.
+- Dos llamadas simultaneas para el mismo rango no producen dos reservas.
 - Una reserva en mantenimiento no puede crearse.
 - Cancelar no elimina el registro.
-- El usuario ve un error accionable ante conflicto `409`.
+- El usuario ve un error accionable ante `RESERVATION_CONFLICT`.
 - La reserva conserva quien la creo y sus cambios relevantes.
+
+La creación, el detalle, la edición y las acciones de ciclo de vida ya están
+disponibles. La cobertura pendiente es principalmente de integración de server
+functions y recorridos end-to-end.
 
 ### Sprint 4: Tarifas y cobro de reservas
 
-#### Tareas Dev A
+**Estado: tarifas implementadas en desarrollo; cobro pendiente.**
+
+#### Aplicacion y experiencia
 
 - Mostrar cotizacion antes de confirmar.
 - Mostrar precio base, descuento y total.
 - Modal de pago con metodo y referencia.
 - Estados de pago y confirmacion visual.
 
-#### Tareas Dev B
+#### Servidor y datos
 
 - Tablas y CRUD de reglas tarifarias.
 - Motor de cotizacion por segmentos de 30 minutos.
 - Soporte para cambio de tarifa dentro del rango.
 - Congelamiento del precio al confirmar.
-- Endpoint transaccional de pago.
+- Server function transaccional de pago.
+
+Las reglas tarifarias, la cotización y el congelamiento del importe ya están
+implementados. La tabla y el contrato base de pagos existen, pero aún no se
+registra ni confirma ningún pago.
 
 #### Criterios de aceptacion
 
-- Una reserva que cruza dia/noche calcula cada segmento correctamente.
+- Una reserva que cruza entre tarifa diurna y nocturna, sin cambiar de fecha, calcula cada segmento correctamente.
 - Editar una tarifa no cambia reservas ya confirmadas.
-- El backend recalcula el precio y no confia en el total del frontend.
+- El servidor recalcula el precio y no confia en el total del navegador.
 - Un pago repetido con la misma idempotency key no duplica ingresos.
 - Todo descuento requiere permiso y motivo.
 
 ### Sprint 5: Quiosco e inventario
 
-#### Tareas Dev A
+#### Aplicacion y experiencia
 
 - CRUD de categorias y productos.
 - Panel de inventario con stock actual y umbral.
@@ -613,12 +694,12 @@ Duracion sugerida: 3 a 5 dias.
 - Alertas de stock bajo.
 - Modal de pago y comprobante interno de venta.
 
-#### Tareas Dev B
+#### Servidor y datos
 
 - Tablas de categorias, productos, ventas, lineas y movimientos.
-- Endpoints de catalogo.
+- Server functions de catalogo.
 - Ajustes de stock con motivo.
-- Endpoint transaccional de venta.
+- Server function transaccional de venta.
 - Anulacion de venta y reversa de stock.
 - Pruebas de concurrencia de stock.
 
@@ -632,7 +713,7 @@ Duracion sugerida: 3 a 5 dias.
 
 ### Sprint 6: Caja, reportes y auditoria operativa
 
-#### Tareas Dev A
+#### Aplicacion y experiencia
 
 - Pantalla de apertura y cierre de caja.
 - Resumen por metodo de pago.
@@ -640,13 +721,13 @@ Duracion sugerida: 3 a 5 dias.
 - Detalle de ventas, reservas, anulaciones y devoluciones.
 - Exportacion CSV si es necesaria para operacion.
 
-#### Tareas Dev B
+#### Servidor y datos
 
 - Modelo de caja y movimientos.
 - Apertura unica por fecha/sede.
 - Calculo de totales desde movimientos validos.
 - Reglas para cierre y reapertura administrativa.
-- Endpoints de reportes y auditoria.
+- Server functions de reportes y auditoria.
 
 #### Criterios de aceptacion
 
@@ -663,14 +744,14 @@ Duracion sugerida: 3 a 5 dias.
 
 - Pruebas end-to-end de flujos criticos.
 - Pruebas de carga basicas de calendario y reservas.
-- Revisión de permisos por endpoint.
+- Revision de permisos por server function.
 - Validacion de entradas, limites y rate limiting en login.
-- Headers de seguridad, CORS restringido y cookies seguras si aplica.
+- Headers de seguridad y cookies seguras.
 - Backups automaticos y restauracion en ambiente temporal.
 - Logs estructurados y monitoreo de errores.
 - Health checks y reinicio controlado.
 - Migraciones de produccion probadas en staging.
-- Nginx, HTTPS, dominio y renovacion de certificado.
+- Proxy, HTTPS, dominio y renovacion de certificado.
 - Runbook de despliegue, rollback y recuperacion.
 - Capacitacion del operador y manual breve.
 
@@ -685,32 +766,25 @@ Duracion sugerida: 3 a 5 dias.
 
 ## 9. Asignacion de trabajo
 
-### Dev A: experiencia operativa
+El monolito no se divide en equipos permanentes de frontend y backend. Cada entrega vertical tiene una persona responsable de completar ruta, UI, server function, reglas, persistencia y pruebas relevantes. Esto evita contratos intermedios y funcionalidades terminadas solo a medias.
 
-- Frontend de autenticacion, calendario, reservas, POS, inventario y caja.
-- Integracion con contratos API.
-- Validaciones de formulario y estados de interfaz.
-- Pruebas de componentes y flujos de usuario.
+### Reparto sugerido por funcionalidad
 
-Dev A no debe duplicar reglas de precios, permisos o stock en frontend. Puede mostrar una previsualizacion, pero el backend decide.
+- Dev A: autenticacion, canchas, calendario, clientes, reservas y tarifas.
+- Dev B: catalogo, ventas, inventario, caja, reportes y auditoria.
+- Infraestructura, migraciones base y convenciones se asignan como tareas concretas, no como propiedad indefinida de una persona.
 
-### Dev B: dominio, datos y operacion
-
-- Migraciones, constraints e indices.
-- Backend de autenticacion, canchas, reservas, tarifas, ventas y caja.
-- Servicios transaccionales e idempotencia.
-- Auditoria, pruebas de integracion y concurrencia.
-- CI/CD, staging, backups y despliegue.
+El reparto puede cambiar por sprint para equilibrar carga y revision. Una operacion que cruza modulos tiene un unico responsable; por ejemplo, `createSale` incluye pago, stock, movimiento de caja y auditoria dentro de la misma transaccion.
 
 ### Responsabilidades compartidas
 
-- Contratos API antes de integrar.
-- Revisión cruzada de pull requests.
-- Decisiones de dominio.
+- Acordar esquemas de entrada y resultados de server functions antes de construir una pantalla compleja.
+- Revision cruzada de pull requests.
+- Decisiones de dominio y cambios a `docs/arch.md`.
 - Pruebas end-to-end.
 - Documentacion de operacion.
 
-Cada tarea debe tener un unico responsable y un revisor distinto. “Compartido” no significa “de nadie”.
+Cada tarea debe tener un unico responsable y un revisor distinto. “Compartido” no significa “de nadie”. La interfaz puede previsualizar precios, permisos o stock, pero el servidor siempre vuelve a validarlos.
 
 ## 10. Estrategia de pruebas
 
@@ -727,7 +801,7 @@ Cada tarea debe tener un unico responsable y un revisor distinto. “Compartido�
 - Permisos por rol.
 - Migraciones en una base limpia.
 - Creacion y cancelacion de reservas.
-- Restriccion de solapamiento.
+- Solapamiento bajo una transaccion SQLite con bloqueo inmediato.
 - Venta con stock suficiente e insuficiente.
 - Anulacion y reversa.
 - Apertura y cierre de caja.
@@ -755,19 +829,19 @@ Cada tarea debe tener un unico responsable y un revisor distinto. “Compartido�
 
 - Reserva que termina exactamente cuando empieza otra: permitida.
 - Reserva que comparte solo el inicio: rechazada.
-- Cruce de medianoche: rechazado inicialmente o soportado de forma explicita; no dejarlo ambiguo.
+- Cruce de medianoche: rechazado en la primera version.
 - Tarifa sin regla aplicable.
 - Producto inactivo con carrito viejo.
 - Precio cambiado mientras el POS esta abierto.
 - Stock ajustado mientras otra venta esta en curso.
 - Usuario desactivado con sesion existente.
-- Caja cerrada con request repetido.
+- Caja cerrada con llamada repetida.
 - Fecha local cercana a medianoche UTC.
 
 ## 11. Indices y restricciones
 
 - Indice en `reservations(court_id, starts_at, ends_at)`.
-- Restriccion de exclusion para rangos bloqueantes.
+- Comprobacion de rangos bloqueantes dentro de una transaccion con `BEGIN IMMEDIATE`.
 - Indice en `reservations(status, starts_at)`.
 - Indice en `payments(paid_at, method, status)`.
 - Indice en `sales(sold_at, status)`.
@@ -776,7 +850,8 @@ Cada tarea debe tener un unico responsable y un revisor distinto. “Compartido�
 - Unicidad de nombre de categoria activa o regla equivalente.
 - `CHECK` para montos y cantidades positivas.
 - `CHECK` para estados permitidos.
-- Foreign keys con politica explicita; no usar cascadas destructivas sobre historial financiero.
+- Claves foraneas activadas en cada conexion y con politica explicita; no usar cascadas destructivas sobre historial financiero.
+- Unicidad de claves de idempotencia por alcance y actor.
 
 ## 12. Seguridad
 
@@ -784,12 +859,11 @@ Cada tarea debe tener un unico responsable y un revisor distinto. “Compartido�
 - No registrar tokens, contrasenas ni datos sensibles.
 - Rate limit para login.
 - Mensajes de login que no revelen si el email existe.
-- Validacion de payload, query params y path params.
-- CORS limitado al dominio conocido.
+- Validacion runtime de entradas en cada server function y ruta HTTP externa.
 - HTTPS obligatorio en produccion.
-- Cookies `httpOnly`, `secure` y `sameSite` si se usa autenticacion por cookie.
+- Cookie de sesion `httpOnly`, `secure` y `sameSite=lax` en produccion.
 - Rotacion de secretos documentada.
-- Principio de minimo privilegio para la base de datos.
+- Archivo SQLite y backups accesibles solo por el usuario del proceso y operadores autorizados.
 - Backups cifrados y acceso restringido.
 - Auditoria de operaciones financieras y administrativas.
 
@@ -809,8 +883,8 @@ En cada pull request:
 - Ejecutar lint.
 - Ejecutar typecheck.
 - Ejecutar pruebas unitarias.
-- Ejecutar pruebas de integracion con PostgreSQL temporal.
-- Construir backend y frontend.
+- Ejecutar pruebas de integracion con una base SQLite temporal y migraciones reales.
+- Construir la aplicacion TanStack Start.
 
 En despliegue:
 
@@ -818,20 +892,20 @@ En despliegue:
 - Ejecutar migraciones compatibles.
 - Desplegar version.
 - Ejecutar health check.
-- Verificar endpoint critico.
+- Verificar health check y un flujo critico.
 - Mantener rollback a la version anterior.
 
 ### Observabilidad
 
-- Logs JSON con `request_id`, usuario, endpoint, estado y duracion.
+- Logs JSON con `request_id`, usuario, server function o ruta, resultado y duracion.
 - Error tracking.
 - Metricas de errores 5xx, latencia, logins fallidos y conflictos de reserva.
 - Alertas de disco, memoria, backup fallido y certificado por vencer.
-- Endpoint `/health` sin filtrar secretos.
+- Ruta `/health` sin filtrar secretos.
 
 ### Backup
 
-- Backup diario automatico.
+- Backup diario automatico con la API de backup de SQLite o una herramienta consciente de WAL.
 - Retencion definida por el negocio.
 - Copia fuera del VPS.
 - Prueba de restauracion al menos mensual.
@@ -843,7 +917,7 @@ Una tarea puede iniciar solo si:
 
 - Tiene objetivo y criterios de aceptacion.
 - Se conocen sus dependencias.
-- El contrato de API o modelo de datos esta definido.
+- El contrato de server function o modelo de datos esta definido.
 - Tiene responsable y revisor.
 - Se conocen permisos, errores y estados vacios.
 - Tiene una estrategia de pruebas.
@@ -855,11 +929,11 @@ Una tarea esta terminada solo si:
 - El codigo esta integrado y revisado.
 - Pasa lint, typecheck y pruebas relevantes.
 - Tiene migracion reversible o politica de rollback documentada.
-- Valida permisos en backend.
+- Valida permisos en la server function.
 - Maneja carga, error, vacio y reintento cuando aplique.
 - Tiene auditoria si cambia dinero, stock, permisos o estados.
 - La interfaz funciona en movil y escritorio cuando corresponda.
-- La documentacion de API/operacion fue actualizada.
+- La documentacion de server functions y operacion fue actualizada.
 - Se demostro el criterio de aceptacion en staging.
 
 ## 16. Riesgos y mitigaciones
@@ -868,7 +942,7 @@ Una tarea esta terminada solo si:
 
 Riesgo: dos operadores crean el mismo horario.
 
-Mitigacion: exclusion constraint en PostgreSQL, transaccion y prueba concurrente.
+Mitigacion: transaccion SQLite con bloqueo de escritura antes de comprobar cruces, insercion antes del commit y prueba concurrente.
 
 ### Doble cobro
 
@@ -880,7 +954,7 @@ Mitigacion: idempotency key, indice unico y respuesta de operacion original.
 
 Riesgo: ventas simultaneas o carrito desactualizado.
 
-Mitigacion: bloqueo de filas, validacion en transaccion y movimientos auditables.
+Mitigacion: bloqueo de escritura SQLite, validacion en transaccion y movimientos auditables.
 
 ### Reportes incorrectos
 
@@ -906,18 +980,24 @@ Riesgo: servidor caido o disco perdido.
 
 Mitigacion: backups fuera del servidor, restauracion probada y documentacion de reconstruccion.
 
+### Contencion de SQLite
+
+Riesgo: transacciones largas o un crecimiento de sedes generan cola de escritura y errores `SQLITE_BUSY`.
+
+Mitigacion: WAL, `busy_timeout`, transacciones breves, una sola replica escritora y monitoreo de latencia. Migrar a PostgreSQL si la contencion sostenida supera el perfil de una sede.
+
 ## 17. Preguntas que deben resolverse antes del Sprint 1
 
 - ¿Se cobra el total al reservar o solo un adelanto?
 - ¿Se permite reservar el mismo dia hasta cuantos minutos antes?
 - ¿Que politica de cancelacion y devolucion aplica?
-- ¿El horario cruza medianoche?
+- ¿En una version posterior sera necesario permitir reservas que crucen medianoche?
 - ¿Las tarifas dependen de cancha, dia, hora o temporada?
 - ¿Una cancha en mantenimiento bloquea reservas existentes?
 - ¿Se necesita comprobante para cada venta?
 - ¿Como se verifica Yape, Plin y transferencia?
 - ¿Puede una caja estar abierta por mas de un usuario?
-- ¿Se opera una sola sede?
+- ¿Se confirma que la primera version opera una sola sede?
 - ¿Quien puede modificar precios y anular ventas?
 - ¿Cuanto tiempo deben conservarse los datos y auditorias?
 - ¿Que volumen esperado de reservas y ventas debe soportar el sistema?
@@ -931,11 +1011,15 @@ Mitigacion: backups fuera del servidor, restauracion probada y documentacion de 
 - Reservas con anti-cruce.
 - Auditoria basica.
 
+Estas capacidades están disponibles en desarrollo. Antes de usarlas en
+operación real faltan pruebas E2E, staging y el runbook de recuperación.
+
 ### Lanzamiento interno 2
 
 - Tarifas.
 - Cobro de reservas.
-- Caja basica.
+
+Las tarifas ya están disponibles. El cobro sigue pendiente.
 
 ### Lanzamiento interno 3
 
@@ -946,7 +1030,7 @@ Mitigacion: backups fuera del servidor, restauracion probada y documentacion de 
 
 ### Lanzamiento operativo
 
-- Reportes completos.
+- Caja y reportes.
 - Backups y restauracion probada.
 - Monitoreo.
 - Manual de operacion.
@@ -959,7 +1043,7 @@ No habilitar el quiosco ni el cierre financiero en produccion solo porque las pa
 - [ ] Reglas de negocio aprobadas.
 - [ ] Migraciones probadas desde base vacia.
 - [ ] Usuario admin creado mediante procedimiento seguro.
-- [ ] Roles probados por endpoint.
+- [ ] Roles probados por server function.
 - [ ] Solapamiento probado bajo concurrencia.
 - [ ] Doble cobro probado con reintento.
 - [ ] Stock negativo imposible bajo concurrencia.
@@ -968,7 +1052,7 @@ No habilitar el quiosco ni el cierre financiero en produccion solo porque las pa
 - [ ] Cierre de caja reconciliado manualmente.
 - [ ] Zona horaria probada alrededor de medianoche.
 - [ ] Backup restaurado con exito.
-- [ ] HTTPS, CORS y headers revisados.
+- [ ] HTTPS, cookies y headers revisados.
 - [ ] Logs y alertas visibles.
 - [ ] Rollback probado.
 - [ ] Runbook entregado.
@@ -978,4 +1062,3 @@ No habilitar el quiosco ni el cierre financiero en produccion solo porque las pa
 ## Resultado esperado
 
 La primera version no debe intentar ser un marketplace ni un sistema contable completo. Debe ser un sistema operativo confiable para una sede: reservar una cancha sin cruces, cobrar una operacion una sola vez, controlar stock con historial y explicar de donde sale cada sol del cierre de caja.
-

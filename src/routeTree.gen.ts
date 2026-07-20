@@ -10,33 +10,218 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as CourtsRouteImport } from './routes/courts'
+import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as InventoryRouteImport } from './routes/inventory'
+import { Route as KioskRouteImport } from './routes/kiosk'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as RatesRouteImport } from './routes/rates'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ReservationsRouteImport } from './routes/reservations'
+import { Route as ReservationsReservationIdRouteImport } from './routes/reservations.$reservationId'
+import { Route as ReservationsNewRouteImport } from './routes/reservations.new'
+import { Route as ReservationsReservationIdEditRouteImport } from './routes/reservations.$reservationId.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CourtsRoute = CourtsRouteImport.update({
+  id: '/courts',
+  path: '/courts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomersRoute = CustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KioskRoute = KioskRouteImport.update({
+  id: '/kiosk',
+  path: '/kiosk',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RatesRoute = RatesRouteImport.update({
+  id: '/rates',
+  path: '/rates',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReservationsRoute = ReservationsRouteImport.update({
+  id: '/reservations',
+  path: '/reservations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReservationsReservationIdRoute =
+  ReservationsReservationIdRouteImport.update({
+    id: '/$reservationId',
+    path: '/$reservationId',
+    getParentRoute: () => ReservationsRoute,
+  } as any)
+const ReservationsNewRoute = ReservationsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ReservationsRoute,
+} as any)
+const ReservationsReservationIdEditRoute =
+  ReservationsReservationIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => ReservationsReservationIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
+  '/courts': typeof CourtsRoute
+  '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
+  '/kiosk': typeof KioskRoute
+  '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
+  '/rates': typeof RatesRoute
+  '/register': typeof RegisterRoute
+  '/reports': typeof ReportsRoute
+  '/reservations': typeof ReservationsRouteWithChildren
+  '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
+  '/reservations/new': typeof ReservationsNewRoute
+  '/reservations/$reservationId/edit': typeof ReservationsReservationIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
+  '/courts': typeof CourtsRoute
+  '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
+  '/kiosk': typeof KioskRoute
+  '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
+  '/rates': typeof RatesRoute
+  '/register': typeof RegisterRoute
+  '/reports': typeof ReportsRoute
+  '/reservations': typeof ReservationsRouteWithChildren
+  '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
+  '/reservations/new': typeof ReservationsNewRoute
+  '/reservations/$reservationId/edit': typeof ReservationsReservationIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/calendar': typeof CalendarRoute
+  '/courts': typeof CourtsRoute
+  '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
+  '/kiosk': typeof KioskRoute
+  '/login': typeof LoginRoute
+  '/profile': typeof ProfileRoute
+  '/rates': typeof RatesRoute
+  '/register': typeof RegisterRoute
+  '/reports': typeof ReportsRoute
+  '/reservations': typeof ReservationsRouteWithChildren
+  '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
+  '/reservations/new': typeof ReservationsNewRoute
+  '/reservations/$reservationId/edit': typeof ReservationsReservationIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/calendar'
+    | '/courts'
+    | '/customers'
+    | '/inventory'
+    | '/kiosk'
+    | '/login'
+    | '/profile'
+    | '/rates'
+    | '/register'
+    | '/reports'
+    | '/reservations'
+    | '/reservations/$reservationId'
+    | '/reservations/new'
+    | '/reservations/$reservationId/edit'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/calendar'
+    | '/courts'
+    | '/customers'
+    | '/inventory'
+    | '/kiosk'
+    | '/login'
+    | '/profile'
+    | '/rates'
+    | '/register'
+    | '/reports'
+    | '/reservations'
+    | '/reservations/$reservationId'
+    | '/reservations/new'
+    | '/reservations/$reservationId/edit'
+  id:
+    | '__root__'
+    | '/'
+    | '/calendar'
+    | '/courts'
+    | '/customers'
+    | '/inventory'
+    | '/kiosk'
+    | '/login'
+    | '/profile'
+    | '/rates'
+    | '/register'
+    | '/reports'
+    | '/reservations'
+    | '/reservations/$reservationId'
+    | '/reservations/new'
+    | '/reservations/$reservationId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CalendarRoute: typeof CalendarRoute
+  CourtsRoute: typeof CourtsRoute
+  CustomersRoute: typeof CustomersRoute
+  InventoryRoute: typeof InventoryRoute
+  KioskRoute: typeof KioskRoute
+  LoginRoute: typeof LoginRoute
+  ProfileRoute: typeof ProfileRoute
+  RatesRoute: typeof RatesRoute
+  RegisterRoute: typeof RegisterRoute
+  ReportsRoute: typeof ReportsRoute
+  ReservationsRoute: typeof ReservationsRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +233,148 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/courts': {
+      id: '/courts'
+      path: '/courts'
+      fullPath: '/courts'
+      preLoaderRoute: typeof CourtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kiosk': {
+      id: '/kiosk'
+      path: '/kiosk'
+      fullPath: '/kiosk'
+      preLoaderRoute: typeof KioskRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rates': {
+      id: '/rates'
+      path: '/rates'
+      fullPath: '/rates'
+      preLoaderRoute: typeof RatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reservations': {
+      id: '/reservations'
+      path: '/reservations'
+      fullPath: '/reservations'
+      preLoaderRoute: typeof ReservationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reservations/$reservationId': {
+      id: '/reservations/$reservationId'
+      path: '/$reservationId'
+      fullPath: '/reservations/$reservationId'
+      preLoaderRoute: typeof ReservationsReservationIdRouteImport
+      parentRoute: typeof ReservationsRoute
+    }
+    '/reservations/new': {
+      id: '/reservations/new'
+      path: '/new'
+      fullPath: '/reservations/new'
+      preLoaderRoute: typeof ReservationsNewRouteImport
+      parentRoute: typeof ReservationsRoute
+    }
+    '/reservations/$reservationId/edit': {
+      id: '/reservations/$reservationId/edit'
+      path: '/edit'
+      fullPath: '/reservations/$reservationId/edit'
+      preLoaderRoute: typeof ReservationsReservationIdEditRouteImport
+      parentRoute: typeof ReservationsReservationIdRoute
+    }
   }
 }
 
+interface ReservationsReservationIdRouteChildren {
+  ReservationsReservationIdEditRoute: typeof ReservationsReservationIdEditRoute
+}
+
+const ReservationsReservationIdRouteChildren: ReservationsReservationIdRouteChildren =
+  {
+    ReservationsReservationIdEditRoute: ReservationsReservationIdEditRoute,
+  }
+
+const ReservationsReservationIdRouteWithChildren =
+  ReservationsReservationIdRoute._addFileChildren(
+    ReservationsReservationIdRouteChildren,
+  )
+
+interface ReservationsRouteChildren {
+  ReservationsReservationIdRoute: typeof ReservationsReservationIdRouteWithChildren
+  ReservationsNewRoute: typeof ReservationsNewRoute
+}
+
+const ReservationsRouteChildren: ReservationsRouteChildren = {
+  ReservationsReservationIdRoute: ReservationsReservationIdRouteWithChildren,
+  ReservationsNewRoute: ReservationsNewRoute,
+}
+
+const ReservationsRouteWithChildren = ReservationsRoute._addFileChildren(
+  ReservationsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CalendarRoute: CalendarRoute,
+  CourtsRoute: CourtsRoute,
+  CustomersRoute: CustomersRoute,
+  InventoryRoute: InventoryRoute,
+  KioskRoute: KioskRoute,
+  LoginRoute: LoginRoute,
+  ProfileRoute: ProfileRoute,
+  RatesRoute: RatesRoute,
+  RegisterRoute: RegisterRoute,
+  ReportsRoute: ReportsRoute,
+  ReservationsRoute: ReservationsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
