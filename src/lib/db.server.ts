@@ -2,9 +2,9 @@ import { mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import Database from 'better-sqlite3'
 import { drizzle } from 'drizzle-orm/better-sqlite3'
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 
 import * as schema from '@/db/schema'
+import { MIGRATION_SQL } from '@/db/migrations-sql'
 import { seedProduction } from '@/db/seed-prod'
 
 const isProd = process.env.NODE_ENV === 'production'
@@ -31,8 +31,8 @@ if (isProd) {
     ).get()
 
     if (!tableCheck) {
-      console.log('[db] No tables found, running migrations...')
-      migrate(db, { migrationsFolder: './src/db/migrations' })
+      console.log('[db] Running consolidated migrations...')
+      sqlite.exec(MIGRATION_SQL)
       console.log('[db] Migrations complete, seeding...')
       seedProduction(db).then(() => {
         console.log('[db] Seed complete')
