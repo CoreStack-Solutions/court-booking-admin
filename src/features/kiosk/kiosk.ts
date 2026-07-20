@@ -38,6 +38,7 @@ const kioskErrorMiddleware = createMiddleware({ type: 'function' }).server(
       const requestId = randomUUID()
       console.error('kiosk server function failed', {
         name: error instanceof Error ? error.name : 'UnknownError',
+        message: error instanceof Error ? error.message : String(error),
         requestId,
       })
       throw new AppError(
@@ -87,7 +88,7 @@ export const createCategory = createServerFn({ method: 'POST' })
     }
 
     const requestId = randomUUID()
-    await db.transaction(async (tx) => {
+    db.transaction((tx) => {
       tx.insert(categories).values(newCategory).run()
       tx.insert(auditLogs)
         .values({
@@ -150,7 +151,7 @@ export const createProduct = createServerFn({ method: 'POST' })
     }
 
     const requestId = randomUUID()
-    await db.transaction(async (tx) => {
+    db.transaction((tx) => {
       tx.insert(products).values(newProduct).run()
 
       if (data.initialStock > 0) {
@@ -214,7 +215,7 @@ export const updateProduct = createServerFn({ method: 'POST' })
     }
 
     const requestId = randomUUID()
-    await db.transaction(async (tx) => {
+    db.transaction((tx) => {
       tx.update(products)
         .set({
           categoryId: updated.categoryId,
@@ -256,7 +257,7 @@ export const recordStockAdjustment = createServerFn({ method: 'POST' })
     const now = Date.now()
     const requestId = randomUUID()
 
-    const result = await db.transaction(async (tx) => {
+    const result = db.transaction((tx) => {
       const prod = tx
         .select()
         .from(products)
@@ -327,7 +328,7 @@ export const createSale = createServerFn({ method: 'POST' })
       .update(JSON.stringify({ ...data, idempotencyKey: undefined }))
       .digest('hex')
 
-    const result = await db.transaction(async (tx) => {
+    const result = db.transaction((tx) => {
       // 1. Check idempotency
       const existingKey = tx
         .select()
@@ -504,7 +505,7 @@ export const voidSale = createServerFn({ method: 'POST' })
     const now = Date.now()
     const requestId = randomUUID()
 
-    await db.transaction(async (tx) => {
+    db.transaction((tx) => {
       const sale = tx
         .select()
         .from(sales)
