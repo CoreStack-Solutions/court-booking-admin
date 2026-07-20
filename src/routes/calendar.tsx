@@ -393,8 +393,10 @@ function CalendarPage() {
                               isPast ? (
                                 <div
                                   aria-label={`${court.name}, ${time}: Pasado`}
-                                  className="flex min-h-[3.25rem] items-center justify-center rounded-lg border border-border/50 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.02)_6px,rgba(100,100,100,0.02)_12px)] bg-muted/20 select-none cursor-not-allowed"
-                                />
+                                  className="flex min-h-[3.25rem] items-center justify-center rounded-lg border border-border/50 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.02)_6px,rgba(100,100,100,0.02)_12px)] bg-muted/20 text-[0.7rem] text-muted-foreground/30 font-medium select-none cursor-not-allowed"
+                                >
+                                  Expirado
+                                </div>
                               ) : (
                                 <div
                                   aria-label={`${court.name}, ${time}: No disponible`}
