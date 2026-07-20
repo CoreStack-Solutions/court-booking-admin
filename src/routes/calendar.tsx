@@ -121,11 +121,11 @@ function CalendarPage() {
 
   const visibleCourts = courts.filter((court) => court.status !== 'inactive')
   const allBlocks = availability.flatMap((item) => item.blocks)
-  const timeLabels = Array.from(
-    new Set(allBlocks.map((block) => block.startsAt)),
+  const hourLabels = Array.from(
+    new Set(allBlocks.map((block) => block.startsAt.split(':')[0] + ':00')),
   )
-  timeLabels.sort()
-  const showTableSemantics = !loading && timeLabels.length > 0
+  hourLabels.sort()
+  const showTableSemantics = !loading && hourLabels.length > 0
 
   return (
     <DashboardLayout user={user}>
@@ -138,46 +138,52 @@ function CalendarPage() {
             <CalendarDays className="size-6 text-primary" aria-hidden />
             Calendario
           </h1>
-          <p className="mt-1 text-sm capitalize text-muted-foreground">
-            {formatDate(date)}
+          <p className="mt-1 text-sm text-muted-foreground">
+            Monitorea la disponibilidad de las canchas y gestiona reservas activas en tiempo real.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-3">
           <Button
             variant="outline"
             size="icon"
+            onClick={() => setDate(shiftDate(date, -1))}
             aria-label="Día anterior"
-            onClick={() => setDate((current) => shiftDate(current, -1))}
           >
-            <ChevronLeft aria-hidden />
+            <ChevronLeft className="size-4" />
           </Button>
+          <span className="min-w-40 text-center text-sm font-semibold tracking-tight">
+            {formatDate(date)}
+          </span>
           <Button
             variant="outline"
-            onClick={() => setDate(limaDateValue(new Date()))}
+            size="icon"
+            onClick={() => setDate(shiftDate(date, 1))}
+            aria-label="Siguiente día"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setDate(today)}
+            disabled={date === today}
+            className="text-xs font-semibold"
           >
             Hoy
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Día siguiente"
-            onClick={() => setDate((current) => shiftDate(current, 1))}
-          >
-            <ChevronRight aria-hidden />
-          </Button>
-          <label className="sr-only" htmlFor="calendar-date">
-            Seleccionar fecha
-          </label>
-          <input
-            id="calendar-date"
-            type="date"
-            value={date}
-            onChange={(event) => {
-              if (event.target.value) setDate(event.target.value)
-            }}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          />
+          <div className="relative">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => e.target.value && setDate(e.target.value)}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              aria-label="Seleccionar fecha específica"
+            />
+            <Button variant="outline" size="icon" className="pointer-events-none">
+              <CalendarDays className="size-4" />
+            </Button>
+          </div>
         </div>
       </section>
 
@@ -192,7 +198,7 @@ function CalendarPage() {
           <Badge variant="secondary" className="bg-muted text-muted-foreground/60 border-transparent font-normal">No disponible / Pasado</Badge>
         </div>
         <span className="hidden sm:inline text-muted-foreground/60">
-          · Bloques de 30 minutos
+          · Bloques de 1 hora (y fracciones)
         </span>
       </div>
 
@@ -203,7 +209,7 @@ function CalendarPage() {
           size="sm"
           onClick={() => setSelectedCourtId('all')}
         >
-          Todas
+          Todas las canchas
         </Button>
         {visibleCourts.map((court) => (
           <Button
@@ -211,11 +217,12 @@ function CalendarPage() {
             variant={selectedCourtId === court.id ? 'default' : 'outline'}
             size="sm"
             onClick={() => setSelectedCourtId(court.id)}
-            style={{
-              borderColor: selectedCourtId === court.id ? undefined : court.color,
-              color: selectedCourtId === court.id ? undefined : court.color,
-            }}
+            className="flex items-center gap-2 shrink-0"
           >
+            <span
+              className="size-2 rounded-full shrink-0"
+              style={{ backgroundColor: court.color }}
+            />
             {court.name}
           </Button>
         ))}
@@ -305,13 +312,13 @@ function CalendarPage() {
                     <RefreshCw className="size-4 animate-spin" aria-hidden />
                     Cargando disponibilidad…
                   </div>
-                ) : timeLabels.length === 0 ? (
+                ) : hourLabels.length === 0 ? (
                   <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground">
                     <Clock3 className="size-5" aria-hidden />
                     No hay horario configurado para esta fecha.
                   </div>
                 ) : (
-                  timeLabels.map((time) => (
+                  hourLabels.map((time) => (
                     <div
                       role={showTableSemantics ? 'row' : undefined}
                       key={time}
@@ -332,80 +339,135 @@ function CalendarPage() {
                         const result = availability.find(
                           (item) => item.court.id === court.id,
                         )
-                        const block = result?.blocks.find(
-                          (item) => item.startsAt === time,
-                        )
-                        const available = block?.available ?? false
-                        const blockStart = new Date(
-                          `${date}T${time}:00-05:00`,
-                        ).getTime()
-                        const isPast = blockStart <= Date.now()
-                        return (
-                          <div
-                            role={showTableSemantics ? 'cell' : undefined}
-                            key={court.id}
-                            className="border-r p-2 last:border-r-0"
-                          >
-                            {block?.reservationId ? (
+
+                        const hourPart = time.split(':')[0]
+                        const timeA = `${hourPart}:00`
+                        const timeB = `${hourPart}:30`
+                        const nextHourTime = `${String(Number(hourPart) + 1).padStart(2, '0')}:00`
+
+                        const blockA = result?.blocks.find((item) => item.startsAt === timeA)
+                        const blockB = result?.blocks.find((item) => item.startsAt === timeB)
+
+                        const isPastA = blockA ? new Date(`${date}T${blockA.startsAt}:00-05:00`).getTime() <= Date.now() : true
+                        const isPastB = blockB ? new Date(`${date}T${blockB.startsAt}:00-05:00`).getTime() <= Date.now() : true
+
+                        const canMerge = (() => {
+                          if (!blockA && !blockB) return true
+                          if (!blockA || !blockB) return false
+                          if (blockA.reservationId && blockA.reservationId === blockB.reservationId) return true
+                          if (blockA.available && !isPastA && blockB.available && !isPastB) return true
+                          if (!blockA.reservationId && isPastA && !blockB.reservationId && isPastB) return true
+                          if (!blockA.reservationId && !blockA.available && !isPastA &&
+                              !blockB.reservationId && !blockB.available && !isPastB) return true
+                          return false
+                        })()
+
+                        const renderSingleBlock = (
+                          block: typeof blockA,
+                          startsAt: string,
+                          endsAt: string,
+                          isPast: boolean,
+                        ) => {
+                          if (!block) {
+                            return (
+                              <div
+                                aria-label={`${court.name}, ${startsAt}: No disponible`}
+                                className="flex h-full flex-1 items-center justify-center gap-1 rounded-lg border border-border/80 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.03)_6px,rgba(100,100,100,0.03)_12px)] bg-muted/40 text-[0.68rem] text-muted-foreground/45 font-semibold select-none cursor-not-allowed py-1"
+                              >
+                                <Lock className="size-3 text-muted-foreground/40" />
+                                Cerrado
+                              </div>
+                            )
+                          }
+
+                          if (block.reservationId) {
+                            return (
                               <Link
                                 to="/reservations/$reservationId"
                                 params={{ reservationId: block.reservationId }}
-                                aria-label={`${court.name}, ${time}: Reserva de ${block.reservationCustomerName ?? 'cliente'}`}
-                                className="flex min-h-[3.25rem] flex-col items-center justify-center rounded-lg border px-2 py-1 text-center transition-all hover:brightness-95 hover:shadow-sm"
+                                aria-label={`${court.name}, ${startsAt}-${endsAt}: Reserva de ${block.reservationCustomerName ?? 'cliente'}`}
+                                className="flex h-full flex-1 flex-col items-center justify-center rounded-lg border px-2 py-0.5 text-center transition-all hover:brightness-95 hover:shadow-sm"
                                 style={{
                                   backgroundColor: `${court.color}15`,
                                   borderColor: `${court.color}35`,
                                   color: court.color,
                                 }}
                               >
-                                <span className="font-bold text-[0.72rem] tracking-wide uppercase">Reservada</span>
+                                <span className="font-bold text-[0.7rem] tracking-wide uppercase">Reservada</span>
                                 {block.reservationCustomerName && (
-                                  <span className="max-w-full truncate text-[0.68rem] font-normal opacity-90">
+                                  <span className="max-w-full truncate text-[0.65rem] font-normal opacity-90 leading-none mt-0.5">
                                     {block.reservationCustomerName}
                                   </span>
                                 )}
                               </Link>
-                            ) : available && !isPast ? (
-                              user.role === 'viewer' ? (
+                            )
+                          }
+
+                          if (block.available && !isPast) {
+                            if (user.role === 'viewer') {
+                              return (
                                 <div
-                                  aria-label={`${court.name}, ${time}: Disponible`}
-                                  className="flex min-h-[3.25rem] items-center justify-center rounded-lg border border-dashed border-muted-foreground/20 bg-transparent text-[0.72rem] font-medium text-muted-foreground/40"
+                                  aria-label={`${court.name}, ${startsAt}: Disponible`}
+                                  className="flex h-full flex-1 items-center justify-center rounded-lg border border-dashed border-muted-foreground/20 bg-transparent text-[0.7rem] font-medium text-muted-foreground/40 py-1"
                                 >
                                   Disponible
                                 </div>
-                              ) : (
-                                <Link
-                                  to="/reservations/new"
-                                  search={{
-                                    courtId: court.id,
-                                    date,
-                                    startsAt: time,
-                                    endsAt: block?.endsAt ?? time,
-                                  }}
-                                  aria-label={`${court.name}, ${time}: Disponible. Crear reserva`}
-                                  className="group flex min-h-[3.25rem] items-center justify-center rounded-lg border border-dashed border-muted-foreground/20 bg-transparent text-[0.72rem] font-medium text-muted-foreground/40 hover:text-green-600 hover:bg-green-500/10 hover:border-solid hover:border-green-500/30 transition-all cursor-pointer"
-                                >
-                                  <span className="hidden group-hover:inline font-bold">+ Reservar</span>
-                                  <span className="inline group-hover:hidden font-normal">Disponible</span>
-                                </Link>
                               )
+                            }
+
+                            return (
+                              <Link
+                                to="/reservations/new"
+                                search={{
+                                  courtId: court.id,
+                                  date,
+                                  startsAt,
+                                  endsAt,
+                                }}
+                                aria-label={`${court.name}, ${startsAt}-${endsAt}: Disponible. Crear reserva`}
+                                className="group flex h-full flex-1 items-center justify-center rounded-lg border border-dashed border-muted-foreground/20 bg-transparent text-[0.7rem] font-medium text-muted-foreground/40 hover:text-green-600 hover:bg-green-500/10 hover:border-solid hover:border-green-500/30 transition-all cursor-pointer py-1"
+                              >
+                                <span className="hidden group-hover:inline font-bold">+ Reservar</span>
+                                <span className="inline group-hover:hidden font-normal">Disponible</span>
+                              </Link>
+                            )
+                          }
+
+                          if (isPast) {
+                            return (
+                              <div
+                                aria-label={`${court.name}, ${startsAt}: Pasado`}
+                                className="flex h-full flex-1 items-center justify-center rounded-lg border border-border/50 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.02)_6px,rgba(100,100,100,0.02)_12px)] bg-muted/20 text-[0.68rem] text-muted-foreground/30 font-medium select-none cursor-not-allowed py-1"
+                              >
+                                Expirado
+                              </div>
+                            )
+                          }
+
+                          return (
+                            <div
+                              aria-label={`${court.name}, ${startsAt}: No disponible`}
+                              className="flex h-full flex-1 items-center justify-center gap-1 rounded-lg border border-border/80 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.03)_6px,rgba(100,100,100,0.03)_12px)] bg-muted/40 text-[0.68rem] text-muted-foreground/45 font-semibold select-none cursor-not-allowed py-1"
+                            >
+                              <Lock className="size-3 text-muted-foreground/40" />
+                              Cerrado
+                            </div>
+                          )
+                        }
+
+                        return (
+                          <div
+                            role={showTableSemantics ? 'cell' : undefined}
+                            key={court.id}
+                            className="border-r p-2 last:border-r-0 flex flex-col gap-1 min-h-[3.75rem] justify-stretch h-full"
+                          >
+                            {canMerge ? (
+                              renderSingleBlock(blockA ?? blockB, timeA, nextHourTime, isPastA && isPastB)
                             ) : (
-                              isPast ? (
-                                <div
-                                  aria-label={`${court.name}, ${time}: Pasado`}
-                                  className="flex min-h-[3.25rem] items-center justify-center rounded-lg border border-border/50 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.02)_6px,rgba(100,100,100,0.02)_12px)] bg-muted/20 text-[0.7rem] text-muted-foreground/30 font-medium select-none cursor-not-allowed"
-                                >
-                                  Expirado
-                                </div>
-                              ) : (
-                                <div
-                                  aria-label={`${court.name}, ${time}: No disponible`}
-                                  className="flex min-h-[3.25rem] items-center justify-center gap-1.5 rounded-lg border border-border/80 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.03)_6px,rgba(100,100,100,0.03)_12px)] bg-muted/40 text-[0.7rem] text-muted-foreground/45 font-semibold select-none cursor-not-allowed"
-                                >
-                                  <Lock className="size-3 text-muted-foreground/40" />
-                                  Cerrado
-                                </div>
-                              )
+                              <>
+                                {renderSingleBlock(blockA, timeA, timeB, isPastA)}
+                                {renderSingleBlock(blockB, timeB, nextHourTime, isPastB)}
+                              </>
                             )}
                           </div>
                         )
