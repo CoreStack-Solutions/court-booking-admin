@@ -59,11 +59,52 @@ export const updateReservationStatusSchema = z.object({
   reason: z.string().trim().max(500).optional(),
 })
 
+export const getReservationSchema = z.object({
+  id: z.string().uuid(),
+})
+
+export const updateReservationSchema = z
+  .object({
+    id: z.string().uuid(),
+    courtId: z.string().uuid(),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
+      .refine((value) => {
+        const parsed = new Date(`${value}T00:00:00Z`)
+        return (
+          !Number.isNaN(parsed.getTime()) &&
+          parsed.toISOString().slice(0, 10) === value
+        )
+      }, 'Fecha inválida'),
+    startsAt: z.string().regex(timePattern, 'Hora inválida'),
+    endsAt: z.string().regex(timePattern, 'Hora inválida'),
+  })
+  .superRefine((value, context) => {
+    const startMinutes = toMinutes(value.startsAt)
+    const endMinutes = toMinutes(value.endsAt)
+    if (startMinutes % 30 !== 0 || endMinutes % 30 !== 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['startsAt'],
+        message: 'Las horas deben alinearse a bloques de 30 minutos',
+      })
+    }
+    if (endMinutes <= startMinutes) {
+      context.addIssue({
+        code: 'custom',
+        path: ['endsAt'],
+        message: 'La hora de fin debe ser posterior al inicio',
+      })
+    }
+  })
+
 export type CreateCustomerInput = z.infer<typeof createCustomerSchema>
 export type CreateReservationInput = z.infer<typeof createReservationSchema>
 export type UpdateReservationStatusInput = z.infer<
   typeof updateReservationStatusSchema
 >
+export type UpdateReservationInput = z.infer<typeof updateReservationSchema>
 
 export type SafeCustomer = {
   id: string

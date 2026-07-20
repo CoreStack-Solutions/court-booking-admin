@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { createReservationSchema } from './reservations.schema'
+import {
+  createReservationSchema,
+  updateReservationSchema,
+} from './reservations.schema'
 
 const validReservation = {
   courtId: '00000000-0000-4000-8000-000000000001',
@@ -31,5 +34,31 @@ describe('createReservationSchema', () => {
   it('requires an idempotency key', () => {
     const { idempotencyKey: _idempotencyKey, ...withoutKey } = validReservation
     expect(createReservationSchema.safeParse(withoutKey).success).toBe(false)
+  })
+})
+
+describe('updateReservationSchema', () => {
+  it('accepts a valid reschedule payload', () => {
+    expect(
+      updateReservationSchema.safeParse({
+        id: '00000000-0000-4000-8000-000000000004',
+        courtId: validReservation.courtId,
+        date: validReservation.date,
+        startsAt: '10:00',
+        endsAt: '11:30',
+      }).success,
+    ).toBe(true)
+  })
+
+  it('rejects a reschedule that crosses midnight or uses unaligned blocks', () => {
+    expect(
+      updateReservationSchema.safeParse({
+        id: '00000000-0000-4000-8000-000000000004',
+        courtId: validReservation.courtId,
+        date: validReservation.date,
+        startsAt: '23:30',
+        endsAt: '00:30',
+      }).success,
+    ).toBe(false)
   })
 })

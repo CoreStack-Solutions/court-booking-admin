@@ -117,4 +117,7 @@ export type AvailabilityBlock = {
   startsAt: string // HH:MM
   endsAt: string // HH:MM
   available: boolean
+  reservationId?: string
+  reservationCustomerName?: string
+  reservationStatus?: 'pending' | 'confirmed'
 }

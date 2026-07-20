@@ -4,7 +4,13 @@ import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import type { ZodType } from 'zod'
 import { z } from 'zod'
 
-import { auditLogs, courtHours, courts, reservations } from '@/db/schema'
+import {
+  auditLogs,
+  courtHours,
+  courts,
+  customers,
+  reservations,
+} from '@/db/schema'
 import { db } from '@/lib/db.server'
 import { requireRole, requireSession } from '@/lib/auth.server'
 import { AppError, validationError } from '@/lib/errors'
@@ -390,8 +396,15 @@ export const listAvailability = createServerFn({ method: 'GET' })
     const dayStart = new Date(`${data.date}T00:00:00-05:00`).getTime()
     const dayEnd = dayStart + 24 * 60 * 60 * 1000
     const booked = await db
-      .select({ startsAt: reservations.startsAt, endsAt: reservations.endsAt })
+      .select({
+        reservationId: reservations.id,
+        startsAt: reservations.startsAt,
+        endsAt: reservations.endsAt,
+        customerName: customers.name,
+        status: reservations.status,
+      })
       .from(reservations)
+      .innerJoin(customers, eq(reservations.customerId, customers.id))
       .where(
         and(
           eq(reservations.courtId, data.courtId),
@@ -412,25 +425,26 @@ export const listAvailability = createServerFn({ method: 'GET' })
       const nextMinutes = currentMinutes + 30
       const format = (m: number) =>
         `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
+      const blockStart = new Date(
+        `${data.date}T${format(currentMinutes)}:00-05:00`,
+      ).getTime()
+      const blockEnd = new Date(
+        `${data.date}T${format(nextMinutes)}:00-05:00`,
+      ).getTime()
+      const reservation = booked.find((item) =>
+        reservationOverlaps(blockStart, blockEnd, item.startsAt, item.endsAt),
+      )
       blocks.push({
         startsAt: format(currentMinutes),
         endsAt: format(nextMinutes),
-        available:
-          court.status === 'active' &&
-          !booked.some((reservation) => {
-            const blockStart = new Date(
-              `${data.date}T${format(currentMinutes)}:00-05:00`,
-            ).getTime()
-            const blockEnd = new Date(
-              `${data.date}T${format(nextMinutes)}:00-05:00`,
-            ).getTime()
-            return reservationOverlaps(
-              blockStart,
-              blockEnd,
-              reservation.startsAt,
-              reservation.endsAt,
-            )
-          }),
+        available: court.status === 'active' && !reservation,
+        reservationId: reservation?.reservationId,
+        reservationCustomerName: reservation?.customerName,
+        reservationStatus:
+          reservation?.status === 'pending' ||
+          reservation?.status === 'confirmed'
+            ? reservation.status
+            : undefined,
       })
       currentMinutes = nextMinutes
     }

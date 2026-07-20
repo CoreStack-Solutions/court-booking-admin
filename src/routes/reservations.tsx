@@ -1,5 +1,11 @@
 import { useState } from 'react'
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useRouterState,
+} from '@tanstack/react-router'
 import { CalendarDays, Plus, UserRound } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -7,6 +13,15 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { getCurrentUser } from '@/features/auth/auth'
 import {
   listReservations,
@@ -25,7 +40,7 @@ export const Route = createFileRoute('/reservations')({
     return { user: current.user }
   },
   loader: async () => listReservations(),
-  component: ReservationsPage,
+  component: ReservationsRouteComponent,
 })
 
 const statusLabels: Record<SafeReservation['status'], string> = {
@@ -44,12 +59,21 @@ function formatDateTime(timestamp: number) {
   }).format(timestamp)
 }
 
+function ReservationsRouteComponent() {
+  const activeRouteId = useRouterState({
+    select: (state) => state.matches.at(-1)?.routeId,
+  })
+  return activeRouteId === '/reservations' ? <ReservationsPage /> : <Outlet />
+}
+
 function ReservationsPage() {
   const { reservations: initialReservations } = Route.useLoaderData()
   const { user } = Route.useRouteContext()
   const [reservations, setReservations] = useState(initialReservations)
   const [error, setError] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
 
   async function changeStatus(
     id: string,
@@ -71,12 +95,14 @@ function ReservationsPage() {
           reservation.id === id ? result.reservation : reservation,
         ),
       )
+      return true
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
           ? caughtError.message
           : 'No se pudo actualizar la reserva',
       )
+      return false
     } finally {
       setPendingId(null)
     }
@@ -140,9 +166,13 @@ function ReservationsPage() {
                     <UserRound className="size-5" aria-hidden />
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate font-semibold">
+                    <Link
+                      to="/reservations/$reservationId"
+                      params={{ reservationId: reservation.id }}
+                      className="truncate font-semibold hover:text-primary"
+                    >
                       {reservation.customerName}
-                    </p>
+                    </Link>
                     <p className="text-sm text-muted-foreground">
                       {reservation.courtName} ·{' '}
                       {formatDateTime(reservation.startsAt)}
@@ -182,15 +212,8 @@ function ReservationsPage() {
                           variant="outline"
                           disabled={pendingId === reservation.id}
                           onClick={() => {
-                            const reason = window.prompt(
-                              'Motivo de cancelación',
-                            )
-                            if (reason?.trim())
-                              void changeStatus(
-                                reservation.id,
-                                'cancelled',
-                                reason,
-                              )
+                            setCancelTarget(reservation.id)
+                            setCancelReason('')
                           }}
                         >
                           Cancelar
@@ -224,15 +247,8 @@ function ReservationsPage() {
                           variant="outline"
                           disabled={pendingId === reservation.id}
                           onClick={() => {
-                            const reason = window.prompt(
-                              'Motivo de cancelación',
-                            )
-                            if (reason?.trim())
-                              void changeStatus(
-                                reservation.id,
-                                'cancelled',
-                                reason,
-                              )
+                            setCancelTarget(reservation.id)
+                            setCancelReason('')
                           }}
                         >
                           Cancelar
@@ -245,6 +261,65 @@ function ReservationsPage() {
           ))}
         </section>
       )}
+
+      <Dialog
+        open={cancelTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setCancelTarget(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar reserva</DialogTitle>
+            <DialogDescription>
+              La reserva se conservará en el historial. Indica el motivo para
+              continuar.
+            </DialogDescription>
+          </DialogHeader>
+          <Label htmlFor="reservation-cancellation-reason">
+            Motivo de cancelación
+          </Label>
+          <textarea
+            id="reservation-cancellation-reason"
+            value={cancelReason}
+            onChange={(event) => setCancelReason(event.target.value)}
+            placeholder="Motivo de cancelación"
+            maxLength={500}
+            rows={4}
+            className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={pendingId !== null}
+              onClick={() => setCancelTarget(null)}
+            >
+              Volver
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={
+                pendingId !== null || !cancelReason.trim() || !cancelTarget
+              }
+              onClick={() => {
+                if (!cancelTarget) return
+                void changeStatus(
+                  cancelTarget,
+                  'cancelled',
+                  cancelReason.trim(),
+                ).then((success) => {
+                  if (success) {
+                    setCancelTarget(null)
+                    setCancelReason('')
+                  }
+                })
+              }}
+            >
+              {pendingId ? 'Cancelando…' : 'Confirmar cancelación'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   )
 }

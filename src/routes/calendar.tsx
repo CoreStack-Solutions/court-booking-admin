@@ -301,7 +301,21 @@ function CalendarPage() {
                           key={court.id}
                           className="border-r p-2 last:border-r-0"
                         >
-                          {available && !isPast ? (
+                          {block?.reservationId ? (
+                            <Link
+                              to="/reservations/$reservationId"
+                              params={{ reservationId: block.reservationId }}
+                              aria-label={`${court.name}, ${time}: Reserva de ${block.reservationCustomerName ?? 'cliente'}`}
+                              className="flex min-h-12 flex-col items-center justify-center rounded-md border border-primary/30 bg-primary/10 px-2 text-center text-xs font-medium text-primary hover:bg-primary/20"
+                            >
+                              <span>Reservada</span>
+                              {block.reservationCustomerName && (
+                                <span className="max-w-full truncate text-[0.7rem] font-normal">
+                                  {block.reservationCustomerName}
+                                </span>
+                              )}
+                            </Link>
+                          ) : available && !isPast ? (
                             user.role === 'viewer' ? (
                               <div
                                 aria-label={`${court.name}, ${time}: Disponible`}

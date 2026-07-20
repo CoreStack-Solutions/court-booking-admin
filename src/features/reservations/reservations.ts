@@ -23,7 +23,9 @@ import {
   createCustomerSchema,
   createReservationSchema,
   customerSearchSchema,
+  getReservationSchema,
   updateReservationStatusSchema,
+  updateReservationSchema,
 } from './reservations.schema'
 import type { SafeCustomer, SafeReservation } from './reservations.schema'
 import {
@@ -90,6 +92,16 @@ function toSafeReservation(
 
 function toEpoch(date: string, time: string) {
   return new Date(`${date}T${time}:00-05:00`).getTime()
+}
+
+function toMinutes(value: string) {
+  const [hour, minute] = value.split(':').map(Number)
+  return hour * 60 + minute
+}
+
+function dayOfWeekForDate(value: string) {
+  const [year, month, day] = value.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay()
 }
 
 export const listCustomers = createServerFn({ method: 'GET' })
@@ -166,6 +178,26 @@ export const listReservations = createServerFn({ method: 'GET' })
       reservations: rows.map((row) =>
         toSafeReservation(row.reservation, row.court, row.customer),
       ),
+    }
+  })
+
+export const getReservation = createServerFn({ method: 'GET' })
+  .middleware([reservationErrorMiddleware])
+  .validator((data) => parseInput(getReservationSchema, data))
+  .handler(async ({ data }) => {
+    await requireSession()
+    const row = await db
+      .select({ reservation: reservations, court: courts, customer: customers })
+      .from(reservations)
+      .innerJoin(courts, eq(reservations.courtId, courts.id))
+      .innerJoin(customers, eq(reservations.customerId, customers.id))
+      .where(eq(reservations.id, data.id))
+      .limit(1)
+      .then((result) => result.at(0))
+    if (!row)
+      throw new AppError('RESERVATION_NOT_FOUND', 'No se encontró la reserva')
+    return {
+      reservation: toSafeReservation(row.reservation, row.court, row.customer),
     }
   })
 
@@ -301,8 +333,7 @@ export const createReservation = createServerFn({ method: 'POST' })
       if (court.status !== 'active') {
         throw new AppError('FORBIDDEN', 'La cancha no acepta nuevas reservas')
       }
-      const [year, month, day] = data.date.split('-').map(Number)
-      const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay()
+      const dayOfWeek = dayOfWeekForDate(data.date)
       const hours = tx
         .select()
         .from(courtHours)
@@ -314,10 +345,6 @@ export const createReservation = createServerFn({ method: 'POST' })
         )
         .limit(1)
         .get()
-      const toMinutes = (value: string) => {
-        const [hour, minute] = value.split(':').map(Number)
-        return hour * 60 + minute
-      }
       if (
         !hours ||
         hours.isClosed ||
@@ -400,6 +427,133 @@ export const createReservation = createServerFn({ method: 'POST' })
         .run()
       return toSafeReservation(reservation, court, customer)
     }, reservationTransactionConfig)
+    return { reservation: result }
+  })
+
+export const updateReservation = createServerFn({ method: 'POST' })
+  .middleware([reservationErrorMiddleware])
+  .validator((data) => parseInput(updateReservationSchema, data))
+  .handler(async ({ data }) => {
+    assertSameOrigin()
+    const session = await requireSession()
+    requireRole(session.user, ['admin', 'operator'])
+    const startsAt = toEpoch(data.date, data.startsAt)
+    const endsAt = toEpoch(data.date, data.endsAt)
+    const now = Date.now()
+
+    const result = db.transaction((tx) => {
+      const current = tx
+        .select({
+          reservation: reservations,
+          court: courts,
+          customer: customers,
+        })
+        .from(reservations)
+        .innerJoin(courts, eq(reservations.courtId, courts.id))
+        .innerJoin(customers, eq(reservations.customerId, customers.id))
+        .where(eq(reservations.id, data.id))
+        .limit(1)
+        .get()
+      if (!current)
+        throw new AppError('RESERVATION_NOT_FOUND', 'No se encontró la reserva')
+      if (!['pending', 'confirmed'].includes(current.reservation.status)) {
+        throw new AppError(
+          'RESERVATION_STATE_INVALID',
+          'Solo se pueden editar reservas pendientes o confirmadas',
+        )
+      }
+      if (now >= current.reservation.startsAt) {
+        throw new AppError(
+          'RESERVATION_STATE_INVALID',
+          'No se puede editar una reserva ya iniciada',
+        )
+      }
+      if (startsAt <= now) {
+        throw new AppError(
+          'RESERVATION_STATE_INVALID',
+          'No se puede mover una reserva a una franja pasada',
+        )
+      }
+
+      const court = tx
+        .select()
+        .from(courts)
+        .where(eq(courts.id, data.courtId))
+        .limit(1)
+        .get()
+      if (!court)
+        throw new AppError('COURT_NOT_FOUND', 'No se encontró la cancha')
+      if (court.status !== 'active') {
+        throw new AppError('FORBIDDEN', 'La cancha no acepta nuevas reservas')
+      }
+
+      const hours = tx
+        .select()
+        .from(courtHours)
+        .where(
+          and(
+            eq(courtHours.courtId, data.courtId),
+            eq(courtHours.dayOfWeek, dayOfWeekForDate(data.date)),
+          ),
+        )
+        .limit(1)
+        .get()
+      if (
+        !hours ||
+        hours.isClosed ||
+        toMinutes(data.startsAt) < toMinutes(hours.opensAt) ||
+        toMinutes(data.endsAt) > toMinutes(hours.closesAt)
+      ) {
+        throw new AppError(
+          'COURT_HOURS_CONFLICT',
+          'La reserva está fuera del horario de la cancha',
+        )
+      }
+
+      const conflict = findReservationConflict(
+        sqlite,
+        data.courtId,
+        startsAt,
+        endsAt,
+        data.id,
+      )
+      if (conflict) {
+        throw new AppError(
+          'RESERVATION_CONFLICT',
+          'La cancha ya está reservada en ese horario',
+        )
+      }
+
+      const next = {
+        courtId: data.courtId,
+        startsAt,
+        endsAt,
+        updatedAt: now,
+      }
+      tx.update(reservations)
+        .set(next)
+        .where(eq(reservations.id, data.id))
+        .run()
+      tx.insert(auditLogs)
+        .values({
+          id: randomUUID(),
+          actorUserId: session.user.id,
+          action: 'reservation.updated',
+          entityType: 'reservation',
+          entityId: data.id,
+          beforeJson: JSON.stringify(current.reservation),
+          afterJson: JSON.stringify(next),
+          createdAt: now,
+          requestId: randomUUID(),
+        })
+        .run()
+      return toSafeReservation(
+        { ...current.reservation, ...next },
+        court,
+        current.customer,
+      )
+    }, reservationTransactionConfig)
+
     return { reservation: result }
   })
 

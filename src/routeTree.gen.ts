@@ -15,7 +15,9 @@ import { Route as CourtsRouteImport } from './routes/courts'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReservationsRouteImport } from './routes/reservations'
+import { Route as ReservationsReservationIdRouteImport } from './routes/reservations.$reservationId'
 import { Route as ReservationsNewRouteImport } from './routes/reservations.new'
+import { Route as ReservationsReservationIdEditRouteImport } from './routes/reservations.$reservationId.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -47,11 +49,23 @@ const ReservationsRoute = ReservationsRouteImport.update({
   path: '/reservations',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReservationsReservationIdRoute =
+  ReservationsReservationIdRouteImport.update({
+    id: '/$reservationId',
+    path: '/$reservationId',
+    getParentRoute: () => ReservationsRoute,
+  } as any)
 const ReservationsNewRoute = ReservationsNewRouteImport.update({
   id: '/new',
   path: '/new',
   getParentRoute: () => ReservationsRoute,
 } as any)
+const ReservationsReservationIdEditRoute =
+  ReservationsReservationIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => ReservationsReservationIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -60,7 +74,9 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/reservations': typeof ReservationsRouteWithChildren
+  '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
   '/reservations/new': typeof ReservationsNewRoute
+  '/reservations/$reservationId/edit': typeof ReservationsReservationIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -69,7 +85,9 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/reservations': typeof ReservationsRouteWithChildren
+  '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
   '/reservations/new': typeof ReservationsNewRoute
+  '/reservations/$reservationId/edit': typeof ReservationsReservationIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,7 +97,9 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/reservations': typeof ReservationsRouteWithChildren
+  '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
   '/reservations/new': typeof ReservationsNewRoute
+  '/reservations/$reservationId/edit': typeof ReservationsReservationIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -90,7 +110,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/reservations'
+    | '/reservations/$reservationId'
     | '/reservations/new'
+    | '/reservations/$reservationId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -99,7 +121,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/reservations'
+    | '/reservations/$reservationId'
     | '/reservations/new'
+    | '/reservations/$reservationId/edit'
   id:
     | '__root__'
     | '/'
@@ -108,7 +132,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/reservations'
+    | '/reservations/$reservationId'
     | '/reservations/new'
+    | '/reservations/$reservationId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -164,6 +190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReservationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reservations/$reservationId': {
+      id: '/reservations/$reservationId'
+      path: '/$reservationId'
+      fullPath: '/reservations/$reservationId'
+      preLoaderRoute: typeof ReservationsReservationIdRouteImport
+      parentRoute: typeof ReservationsRoute
+    }
     '/reservations/new': {
       id: '/reservations/new'
       path: '/new'
@@ -171,14 +204,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReservationsNewRouteImport
       parentRoute: typeof ReservationsRoute
     }
+    '/reservations/$reservationId/edit': {
+      id: '/reservations/$reservationId/edit'
+      path: '/edit'
+      fullPath: '/reservations/$reservationId/edit'
+      preLoaderRoute: typeof ReservationsReservationIdEditRouteImport
+      parentRoute: typeof ReservationsReservationIdRoute
+    }
   }
 }
 
+interface ReservationsReservationIdRouteChildren {
+  ReservationsReservationIdEditRoute: typeof ReservationsReservationIdEditRoute
+}
+
+const ReservationsReservationIdRouteChildren: ReservationsReservationIdRouteChildren =
+  {
+    ReservationsReservationIdEditRoute: ReservationsReservationIdEditRoute,
+  }
+
+const ReservationsReservationIdRouteWithChildren =
+  ReservationsReservationIdRoute._addFileChildren(
+    ReservationsReservationIdRouteChildren,
+  )
+
 interface ReservationsRouteChildren {
+  ReservationsReservationIdRoute: typeof ReservationsReservationIdRouteWithChildren
   ReservationsNewRoute: typeof ReservationsNewRoute
 }
 
 const ReservationsRouteChildren: ReservationsRouteChildren = {
+  ReservationsReservationIdRoute: ReservationsReservationIdRouteWithChildren,
   ReservationsNewRoute: ReservationsNewRoute,
 }
 

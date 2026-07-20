@@ -193,6 +193,15 @@ describe('reservation overlap protection', () => {
     database.close()
   })
 
+  it('can ignore the reservation being rescheduled', () => {
+    const database = createDatabase()
+    reserve(database, 'reservation-1', 100, 200)
+    expect(
+      findReservationConflict(database, 'court-1', 100, 200, 'reservation-1'),
+    ).toBeUndefined()
+    database.close()
+  })
+
   it('allows adjacent ranges and ignores cancelled reservations', () => {
     const database = createDatabase()
     reserve(database, 'reservation-1', 100, 200)

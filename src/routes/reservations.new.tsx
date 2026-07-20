@@ -135,10 +135,13 @@ function NewReservationPage() {
     setLoading(true)
     setError(null)
     try {
-      await createReservation({
+      const result = await createReservation({
         data: { courtId, customerId, date, startsAt, endsAt, idempotencyKey },
       })
-      await navigate({ to: '/reservations' })
+      await navigate({
+        to: '/reservations/$reservationId',
+        params: { reservationId: result.reservation.id },
+      })
     } catch (caughtError) {
       setError(
         caughtError instanceof Error
