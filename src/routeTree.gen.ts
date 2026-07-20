@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CourtsRouteImport } from './routes/courts'
 import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as InventoryRouteImport } from './routes/inventory'
+import { Route as KioskRouteImport } from './routes/kiosk'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as RegisterRouteImport } from './routes/register'
@@ -40,6 +42,16 @@ const CourtsRoute = CourtsRouteImport.update({
 const CustomersRoute = CustomersRouteImport.update({
   id: '/customers',
   path: '/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KioskRoute = KioskRouteImport.update({
+  id: '/kiosk',
+  path: '/kiosk',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -90,6 +102,8 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/courts': typeof CourtsRoute
   '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
+  '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/rates': typeof RatesRoute
   '/register': typeof RegisterRoute
@@ -104,6 +118,8 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/courts': typeof CourtsRoute
   '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
+  '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/rates': typeof RatesRoute
   '/register': typeof RegisterRoute
@@ -119,6 +135,8 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/courts': typeof CourtsRoute
   '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
+  '/kiosk': typeof KioskRoute
   '/login': typeof LoginRoute
   '/rates': typeof RatesRoute
   '/register': typeof RegisterRoute
@@ -135,6 +153,8 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/courts'
     | '/customers'
+    | '/inventory'
+    | '/kiosk'
     | '/login'
     | '/rates'
     | '/register'
@@ -149,6 +169,8 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/courts'
     | '/customers'
+    | '/inventory'
+    | '/kiosk'
     | '/login'
     | '/rates'
     | '/register'
@@ -163,6 +185,8 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/courts'
     | '/customers'
+    | '/inventory'
+    | '/kiosk'
     | '/login'
     | '/rates'
     | '/register'
@@ -178,6 +202,8 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   CourtsRoute: typeof CourtsRoute
   CustomersRoute: typeof CustomersRoute
+  InventoryRoute: typeof InventoryRoute
+  KioskRoute: typeof KioskRoute
   LoginRoute: typeof LoginRoute
   RatesRoute: typeof RatesRoute
   RegisterRoute: typeof RegisterRoute
@@ -213,6 +239,20 @@ declare module '@tanstack/react-router' {
       path: '/customers'
       fullPath: '/customers'
       preLoaderRoute: typeof CustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/kiosk': {
+      id: '/kiosk'
+      path: '/kiosk'
+      fullPath: '/kiosk'
+      preLoaderRoute: typeof KioskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -307,6 +347,8 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   CourtsRoute: CourtsRoute,
   CustomersRoute: CustomersRoute,
+  InventoryRoute: InventoryRoute,
+  KioskRoute: KioskRoute,
   LoginRoute: LoginRoute,
   RatesRoute: RatesRoute,
   RegisterRoute: RegisterRoute,

@@ -390,8 +390,172 @@ export const paymentsRelations = relations(payments, ({ one }) => ({
     fields: [payments.reservationId],
     references: [reservations.id],
   }),
+  sale: one(sales, {
+    fields: [payments.saleId],
+    references: [sales.id],
+  }),
   receiver: one(users, {
     fields: [payments.receivedBy],
     references: [users.id],
   }),
 }))
+
+export const categories = sqliteTable(
+  'categories',
+  {
+    id: text('id').primaryKey(),
+    name: text('name').notNull(),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    createdAt: integer('created_at', { mode: 'number' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'number' }).notNull(),
+  },
+  (table) => [
+    check('categories_name_not_empty', sql`length(trim(${table.name})) > 0`),
+  ],
+)
+
+export const products = sqliteTable(
+  'products',
+  {
+    id: text('id').primaryKey(),
+    categoryId: text('category_id')
+      .references(() => categories.id)
+      .notNull(),
+    sku: text('sku'),
+    name: text('name').notNull(),
+    salePriceCents: integer('sale_price_cents').notNull(),
+    lowStockThreshold: integer('low_stock_threshold').notNull().default(0),
+    currentStock: integer('current_stock').notNull().default(0),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    createdAt: integer('created_at', { mode: 'number' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'number' }).notNull(),
+  },
+  (table) => [
+    index('products_category_idx').on(table.categoryId),
+    check('products_name_not_empty', sql`length(trim(${table.name})) > 0`),
+    check('products_price_positive', sql`${table.salePriceCents} >= 0`),
+    check('products_stock_nonnegative', sql`${table.currentStock} >= 0`),
+  ],
+)
+
+export const sales = sqliteTable(
+  'sales',
+  {
+    id: text('id').primaryKey(),
+    totalAmountCents: integer('total_amount_cents').notNull(),
+    status: text('status', { enum: ['completed', 'voided'] })
+      .notNull()
+      .default('completed'),
+    soldAt: integer('sold_at', { mode: 'number' }).notNull(),
+    createdBy: text('created_by')
+      .references(() => users.id)
+      .notNull(),
+    createdAt: integer('created_at', { mode: 'number' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'number' }).notNull(),
+  },
+  (table) => [
+    index('sales_sold_at_idx').on(table.soldAt),
+    check('sales_amount_nonnegative', sql`${table.totalAmountCents} >= 0`),
+  ],
+)
+
+export const saleItems = sqliteTable(
+  'sale_items',
+  {
+    id: text('id').primaryKey(),
+    saleId: text('sale_id')
+      .references(() => sales.id)
+      .notNull(),
+    productId: text('product_id')
+      .references(() => products.id)
+      .notNull(),
+    productNameSnapshot: text('product_name_snapshot').notNull(),
+    unitPriceCents: integer('unit_price_cents').notNull(),
+    quantity: integer('quantity').notNull(),
+    lineTotalCents: integer('line_total_cents').notNull(),
+  },
+  (table) => [
+    index('sale_items_sale_idx').on(table.saleId),
+    index('sale_items_product_idx').on(table.productId),
+    check('sale_items_price_nonnegative', sql`${table.unitPriceCents} >= 0`),
+    check('sale_items_quantity_positive', sql`${table.quantity} > 0`),
+  ],
+)
+
+export const stockMovements = sqliteTable(
+  'stock_movements',
+  {
+    id: text('id').primaryKey(),
+    productId: text('product_id')
+      .references(() => products.id)
+      .notNull(),
+    type: text('type', {
+      enum: ['initial', 'sale', 'adjustment', 'return', 'void'],
+    }).notNull(),
+    quantityDelta: integer('quantity_delta').notNull(),
+    quantityAfter: integer('quantity_after').notNull(),
+    saleId: text('sale_id').references(() => sales.id),
+    reason: text('reason'),
+    createdBy: text('created_by')
+      .references(() => users.id)
+      .notNull(),
+    createdAt: integer('created_at', { mode: 'number' }).notNull(),
+  },
+  (table) => [
+    index('stock_movements_product_idx').on(table.productId),
+    check('stock_movements_delta_nonzero', sql`${table.quantityDelta} != 0`),
+    check(
+      'stock_movements_after_nonnegative',
+      sql`${table.quantityAfter} >= 0`,
+    ),
+  ],
+)
+
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  products: many(products),
+}))
+
+export const productsRelations = relations(products, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [products.categoryId],
+    references: [categories.id],
+  }),
+  saleItems: many(saleItems),
+  stockMovements: many(stockMovements),
+}))
+
+export const salesRelations = relations(sales, ({ one, many }) => ({
+  creator: one(users, {
+    fields: [sales.createdBy],
+    references: [users.id],
+  }),
+  items: many(saleItems),
+  payments: many(payments),
+}))
+
+export const saleItemsRelations = relations(saleItems, ({ one }) => ({
+  sale: one(sales, {
+    fields: [saleItems.saleId],
+    references: [sales.id],
+  }),
+  product: one(products, {
+    fields: [saleItems.productId],
+    references: [products.id],
+  }),
+}))
+
+export const stockMovementsRelations = relations(stockMovements, ({ one }) => ({
+  product: one(products, {
+    fields: [stockMovements.productId],
+    references: [products.id],
+  }),
+  sale: one(sales, {
+    fields: [stockMovements.saleId],
+    references: [sales.id],
+  }),
+  creator: one(users, {
+    fields: [stockMovements.createdBy],
+    references: [users.id],
+  }),
+}))
+
