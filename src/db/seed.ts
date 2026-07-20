@@ -121,30 +121,40 @@ for (const seedCourt of seedCourts) {
 
 console.log('Seed complete ✓')
 
-const existingRate = await db
-  .select({ id: rateRules.id })
-  .from(rateRules)
-  .limit(1)
-  .then((result) => result.at(0))
+// Clean existing rates to avoid duplicates or old rules
+await db.delete(rateRules).run()
 
-if (!existingRate) {
-  const defaultRates = Array.from({ length: 7 }, (_, dayOfWeek) => {
-    const weekend = dayOfWeek === 0 || dayOfWeek === 6
-    return {
-      id: randomUUID(),
-      courtId: null,
-      name: weekend ? 'Tarifa base fin de semana' : 'Tarifa base semana',
-      dayOfWeek,
-      startsAt: weekend ? '08:00' : '07:00',
-      endsAt: weekend ? '20:00' : '22:00',
-      pricePerHourCents: weekend ? 7000 : 6000,
-      effectiveFrom: '2026-01-01',
-      effectiveTo: null,
-      isActive: true,
-      createdAt: now,
-      updatedAt: now,
-    }
-  })
-  await db.insert(rateRules).values(defaultRates)
-  console.log('Default rates seeded')
-}
+const defaultRates = [
+  {
+    id: randomUUID(),
+    courtId: null,
+    name: 'Tarifa día',
+    dayOfWeek: null,
+    startsAt: '07:00',
+    endsAt: '17:00',
+    pricePerHourCents: 6000,
+    effectiveFrom: '2026-01-01',
+    effectiveTo: null,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+  {
+    id: randomUUID(),
+    courtId: null,
+    name: 'Tarifa noche',
+    dayOfWeek: null,
+    startsAt: '17:00',
+    endsAt: '23:00',
+    pricePerHourCents: 8000,
+    effectiveFrom: '2026-01-01',
+    effectiveTo: null,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now,
+  },
+]
+
+await db.insert(rateRules).values(defaultRates).run()
+console.log('Default rates seeded')
+
