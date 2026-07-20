@@ -20,6 +20,7 @@ import {
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { TimePicker } from '@/components/ui/time-picker'
 import { getErrorCode } from '@/lib/errors'
 import { getCurrentUser } from '@/features/auth/auth'
 import { listCourts } from '@/features/courts/courts'
@@ -272,24 +273,18 @@ function NewReservationPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="reservation-start">Inicio</Label>
-                  <Input
-                    id="reservation-start"
-                    type="time"
-                    step="1800"
-                    required
+                  <TimePicker
                     value={startsAt}
-                    onChange={(event) => setStartsAt(event.target.value)}
+                    onChange={(val) => setStartsAt(val)}
+                    label="Hora inicio"
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="reservation-end">Fin</Label>
-                  <Input
-                    id="reservation-end"
-                    type="time"
-                    step="1800"
-                    required
+                  <TimePicker
                     value={endsAt}
-                    onChange={(event) => setEndsAt(event.target.value)}
+                    onChange={(val) => setEndsAt(val)}
+                    label="Hora fin"
                   />
                 </div>
               </div>

@@ -16,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { getCurrentUser } from '@/features/auth/auth'
 import { listAvailability, listCourts } from '@/features/courts/courts'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import type {
   AvailabilityBlock,
   SafeCourt,
@@ -172,18 +174,24 @@ function CalendarPage() {
           >
             Hoy
           </Button>
-          <div className="relative">
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => e.target.value && setDate(e.target.value)}
-              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              aria-label="Seleccionar fecha específica"
-            />
-            <Button variant="outline" size="icon" className="pointer-events-none">
-              <CalendarDays className="size-4" />
-            </Button>
-          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Seleccionar fecha específica">
+                <CalendarDays className="size-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={new Date(date + 'T12:00:00')}
+                onSelect={(val) => {
+                  if (val) {
+                    setDate(localDateValue(val))
+                  }
+                }}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
       </section>
 
