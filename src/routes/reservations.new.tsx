@@ -5,8 +5,11 @@ import {
   redirect,
   useNavigate,
 } from '@tanstack/react-router'
-import { ArrowLeft, UserPlus } from 'lucide-react'
+import { ArrowLeft, UserPlus, CalendarDays } from 'lucide-react'
 import { z } from 'zod'
+
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -20,6 +23,7 @@ import {
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { TimePicker } from '@/components/ui/time-picker'
 import { getErrorCode } from '@/lib/errors'
 import { getCurrentUser } from '@/features/auth/auth'
 import { listCourts } from '@/features/courts/courts'
@@ -30,6 +34,19 @@ import {
   listCustomers,
 } from '@/features/reservations/reservations'
 import type { SafeCustomer } from '@/features/reservations/reservations.schema'
+
+function localDateValue(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatDatePE(dateStr: string) {
+  if (!dateStr) return 'Seleccionar fecha'
+  const [year, month, day] = dateStr.split('-')
+  return `${day}/${month}/${year}`
+}
 
 export const Route = createFileRoute('/reservations/new')({
   validateSearch: z.object({
@@ -262,34 +279,40 @@ function NewReservationPage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="grid gap-2">
                   <Label htmlFor="reservation-date">Fecha</Label>
-                  <Input
-                    id="reservation-date"
-                    type="date"
-                    required
-                    value={date}
-                    onChange={(event) => setDate(event.target.value)}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal h-10 gap-2">
+                        <CalendarDays className="size-4 text-muted-foreground shrink-0" />
+                        {formatDatePE(date)}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={date ? new Date(date + 'T12:00:00') : undefined}
+                        onSelect={(val) => {
+                          if (val) {
+                            setDate(localDateValue(val))
+                          }
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="reservation-start">Inicio</Label>
-                  <Input
-                    id="reservation-start"
-                    type="time"
-                    step="1800"
-                    required
+                  <TimePicker
                     value={startsAt}
-                    onChange={(event) => setStartsAt(event.target.value)}
+                    onChange={(val) => setStartsAt(val)}
+                    label="Hora inicio"
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="reservation-end">Fin</Label>
-                  <Input
-                    id="reservation-end"
-                    type="time"
-                    step="1800"
-                    required
+                  <TimePicker
                     value={endsAt}
-                    onChange={(event) => setEndsAt(event.target.value)}
+                    onChange={(val) => setEndsAt(val)}
+                    label="Hora fin"
                   />
                 </div>
               </div>
