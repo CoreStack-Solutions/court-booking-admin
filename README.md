@@ -1,6 +1,6 @@
 # CanchasApp Admin
 
-Aplicación web para operar una sede deportiva: canchas, horarios, calendario,
+Aplicación web  para operar una sede deportiva: canchas, horarios, calendario,
 clientes, reservas, tarifas y auditoría. Está construida como un monolito
 modular con TanStack Start, server functions tipadas, Drizzle ORM y SQLite.
 
