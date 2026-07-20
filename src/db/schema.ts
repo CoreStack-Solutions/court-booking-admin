@@ -13,6 +13,10 @@ import {
   reservationStatuses,
   userRoles,
 } from '@/lib/auth.constants'
+import {
+  paymentMethods,
+  paymentStatuses,
+} from '@/features/payments/payments.constants'
 
 export type { UserRole } from '@/lib/auth.constants'
 export type { CourtStatus } from '@/lib/auth.constants'
@@ -280,6 +284,51 @@ export const idempotencyKeys = sqliteTable(
   ],
 )
 
+export const payments = sqliteTable(
+  'payments',
+  {
+    id: text('id').primaryKey(),
+    reservationId: text('reservation_id').references(() => reservations.id),
+    saleId: text('sale_id'),
+    amountCents: integer('amount_cents').notNull(),
+    method: text('method', { enum: paymentMethods }).notNull(),
+    status: text('status', { enum: paymentStatuses })
+      .notNull()
+      .default('pending'),
+    reference: text('reference'),
+    paidAt: integer('paid_at', { mode: 'number' }),
+    receivedBy: text('received_by').references(() => users.id),
+    voidReason: text('void_reason'),
+    createdAt: integer('created_at', { mode: 'number' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'number' }).notNull(),
+  },
+  (table) => [
+    index('payments_paid_at_method_status_idx').on(
+      table.paidAt,
+      table.method,
+      table.status,
+    ),
+    index('payments_reservation_idx').on(table.reservationId),
+    check('payments_amount_positive', sql`${table.amountCents} > 0`),
+    check(
+      'payments_amount_integer',
+      sql`typeof(${table.amountCents}) = 'integer'`,
+    ),
+    check(
+      'payments_method_valid',
+      sql`${table.method} in ('cash', 'yape', 'plin', 'bank_transfer')`,
+    ),
+    check(
+      'payments_status_valid',
+      sql`${table.status} in ('pending', 'paid', 'voided', 'refunded')`,
+    ),
+    check(
+      'payments_exactly_one_origin',
+      sql`(${table.reservationId} is not null and ${table.saleId} is null) or (${table.reservationId} is null and ${table.saleId} is not null)`,
+    ),
+  ],
+)
+
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   auditLogs: many(auditLogs),
@@ -332,6 +381,17 @@ export const reservationsRelations = relations(reservations, ({ one }) => ({
   }),
   creator: one(users, {
     fields: [reservations.createdBy],
+    references: [users.id],
+  }),
+}))
+
+export const paymentsRelations = relations(payments, ({ one }) => ({
+  reservation: one(reservations, {
+    fields: [payments.reservationId],
+    references: [reservations.id],
+  }),
+  receiver: one(users, {
+    fields: [payments.receivedBy],
     references: [users.id],
   }),
 }))
