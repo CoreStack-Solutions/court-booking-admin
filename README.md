@@ -20,7 +20,7 @@ Implementado en desarrollo:
 Todavía no están implementados el cobro, caja, quiosco, inventario, reportes
 financieros, pruebas end-to-end ni el endurecimiento de producción.
 
-## Desarrollo local
+## Desarrollo en local
 
 Requisitos: Node.js compatible con las dependencias del proyecto y `pnpm`.
 
