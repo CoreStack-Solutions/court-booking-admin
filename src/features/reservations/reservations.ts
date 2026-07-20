@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { and, asc, desc, eq, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, or, sql, inArray, lt, gt } from 'drizzle-orm'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import type { ZodType } from 'zod'
 
@@ -713,3 +713,40 @@ export const updateReservationStatus = createServerFn({ method: 'POST' })
     })
     return { reservation: result }
   })
+
+function limaDateString() {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Lima',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const values = Object.fromEntries(
+    parts.map((part) => [part.type, part.value]),
+  )
+  return `${values.year}-${values.month}-${values.day}`
+}
+
+export const getTodayReservationsCount = createServerFn({ method: 'GET' })
+  .middleware([reservationErrorMiddleware])
+  .handler(async () => {
+    await requireSession()
+    const todayStr = limaDateString()
+    const startsAt = new Date(`${todayStr}T00:00:00-05:00`).getTime()
+    const endsAt = startsAt + 24 * 60 * 60 * 1000
+
+    const result = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(reservations)
+      .where(
+        and(
+          inArray(reservations.status, ['pending', 'confirmed', 'completed']),
+          lt(reservations.startsAt, endsAt),
+          gt(reservations.endsAt, startsAt),
+        )
+      )
+      .get()
+
+    return { count: result?.count ?? 0 }
+  })
+

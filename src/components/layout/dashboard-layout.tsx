@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
   Bell,
@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils'
 import { logout } from '@/features/auth/auth'
 import type { SafeUser } from '@/features/auth/auth.schema'
+import { getTodayReservationsCount } from '@/features/reservations/reservations'
 
 interface NavItem {
   label: string
@@ -50,7 +51,6 @@ const navSections: NavSection[] = [
       {
         label: 'Calendario',
         icon: CalendarDays,
-        badge: '12',
         href: '/calendar',
       },
       { label: 'Reservas', icon: CalendarDays, href: '/reservations' },
@@ -79,11 +79,13 @@ function SidebarContent({
   onNavigate,
   onLogout,
   user,
+  todayCount,
 }: {
   activeNav: string
   onNavigate: (label: string) => void
   onLogout: () => void
   user: SafeUser
+  todayCount?: number
 }) {
   const roleLabel = {
     admin: 'Administrador',
@@ -128,8 +130,13 @@ function SidebarContent({
                   !item.adminOnly ||
                   user.role === 'admin',
               )
-              .map((item) =>
-                item.href ? (
+              .map((item) => {
+                const isCalendar = item.href === '/calendar'
+                const displayBadge = isCalendar
+                  ? (todayCount !== undefined && todayCount > 0 ? String(todayCount) : undefined)
+                  : item.badge
+
+                return (
                   <Link
                     key={item.label}
                     to={item.href}
@@ -142,7 +149,7 @@ function SidebarContent({
                   >
                     <item.icon className="size-[1.1rem]" aria-hidden="true" />
                     {item.label}
-                    {item.badge && (
+                    {displayBadge && (
                       <Badge
                         variant="secondary"
                         className={cn(
@@ -151,38 +158,12 @@ function SidebarContent({
                             'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
                         )}
                       >
-                        {item.badge}
+                        {displayBadge}
                       </Badge>
                     )}
                   </Link>
-                ) : (
-                  <Button
-                    key={item.label}
-                    variant="ghost"
-                    className={cn(
-                      'w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                      activeNav === item.label &&
-                        'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
-                    )}
-                    onClick={() => onNavigate(item.label)}
-                  >
-                    <item.icon className="size-[1.1rem]" aria-hidden="true" />
-                    {item.label}
-                    {item.badge && (
-                      <Badge
-                        variant="secondary"
-                        className={cn(
-                          'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
-                          activeNav === item.label &&
-                            'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
-                        )}
-                      >
-                        {item.badge}
-                      </Badge>
-                    )}
-                  </Button>
-                ),
-              )}
+                )
+              })}
           </div>
         ))}
       </nav>
@@ -230,6 +211,21 @@ export function DashboardLayout({
   const routerState = useRouterState()
   const currentPath = routerState.location.pathname
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [todayReservationsCount, setTodayReservationsCount] = useState<number | undefined>(undefined)
+
+  useEffect(() => {
+    let active = true
+    getTodayReservationsCount()
+      .then((res) => {
+        if (active) setTodayReservationsCount(res.count)
+      })
+      .catch((err) => {
+        console.error('Error fetching today reservations count', err)
+      })
+    return () => {
+      active = false
+    }
+  }, [currentPath]) // Refresh on path changes
 
   async function handleLogout() {
     await logout()
@@ -252,6 +248,7 @@ export function DashboardLayout({
             user={user}
             onLogout={handleLogout}
             onNavigate={() => setMobileNavOpen(false)}
+            todayCount={todayReservationsCount}
           />
         </SheetContent>
       </Sheet>
@@ -262,6 +259,7 @@ export function DashboardLayout({
           onNavigate={() => {}}
           onLogout={handleLogout}
           user={user}
+          todayCount={todayReservationsCount}
         />
       </aside>
 
