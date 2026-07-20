@@ -12,9 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CourtsRouteImport } from './routes/courts'
+import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RatesRouteImport } from './routes/rates'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as ReservationsReservationIdRouteImport } from './routes/reservations.$reservationId'
 import { Route as ReservationsNewRouteImport } from './routes/reservations.new'
@@ -35,6 +37,11 @@ const CourtsRoute = CourtsRouteImport.update({
   path: '/courts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomersRoute = CustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -48,6 +55,11 @@ const RatesRoute = RatesRouteImport.update({
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReservationsRoute = ReservationsRouteImport.update({
@@ -77,9 +89,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/courts': typeof CourtsRoute
+  '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/rates': typeof RatesRoute
   '/register': typeof RegisterRoute
+  '/reports': typeof ReportsRoute
   '/reservations': typeof ReservationsRouteWithChildren
   '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
   '/reservations/new': typeof ReservationsNewRoute
@@ -89,9 +103,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/courts': typeof CourtsRoute
+  '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/rates': typeof RatesRoute
   '/register': typeof RegisterRoute
+  '/reports': typeof ReportsRoute
   '/reservations': typeof ReservationsRouteWithChildren
   '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
   '/reservations/new': typeof ReservationsNewRoute
@@ -102,9 +118,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/courts': typeof CourtsRoute
+  '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/rates': typeof RatesRoute
   '/register': typeof RegisterRoute
+  '/reports': typeof ReportsRoute
   '/reservations': typeof ReservationsRouteWithChildren
   '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
   '/reservations/new': typeof ReservationsNewRoute
@@ -116,9 +134,11 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/courts'
+    | '/customers'
     | '/login'
     | '/rates'
     | '/register'
+    | '/reports'
     | '/reservations'
     | '/reservations/$reservationId'
     | '/reservations/new'
@@ -128,9 +148,11 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/courts'
+    | '/customers'
     | '/login'
     | '/rates'
     | '/register'
+    | '/reports'
     | '/reservations'
     | '/reservations/$reservationId'
     | '/reservations/new'
@@ -140,9 +162,11 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/courts'
+    | '/customers'
     | '/login'
     | '/rates'
     | '/register'
+    | '/reports'
     | '/reservations'
     | '/reservations/$reservationId'
     | '/reservations/new'
@@ -153,9 +177,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   CourtsRoute: typeof CourtsRoute
+  CustomersRoute: typeof CustomersRoute
   LoginRoute: typeof LoginRoute
   RatesRoute: typeof RatesRoute
   RegisterRoute: typeof RegisterRoute
+  ReportsRoute: typeof ReportsRoute
   ReservationsRoute: typeof ReservationsRouteWithChildren
 }
 
@@ -182,6 +208,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CourtsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -201,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reservations': {
@@ -266,9 +306,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   CourtsRoute: CourtsRoute,
+  CustomersRoute: CustomersRoute,
   LoginRoute: LoginRoute,
   RatesRoute: RatesRoute,
   RegisterRoute: RegisterRoute,
+  ReportsRoute: ReportsRoute,
   ReservationsRoute: ReservationsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
