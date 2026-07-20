@@ -5,8 +5,11 @@ import {
   redirect,
   useNavigate,
 } from '@tanstack/react-router'
-import { ArrowLeft, UserPlus } from 'lucide-react'
+import { ArrowLeft, UserPlus, CalendarDays } from 'lucide-react'
 import { z } from 'zod'
+
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -31,6 +34,19 @@ import {
   listCustomers,
 } from '@/features/reservations/reservations'
 import type { SafeCustomer } from '@/features/reservations/reservations.schema'
+
+function localDateValue(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function formatDatePE(dateStr: string) {
+  if (!dateStr) return 'Seleccionar fecha'
+  const [year, month, day] = dateStr.split('-')
+  return `${day}/${month}/${year}`
+}
 
 export const Route = createFileRoute('/reservations/new')({
   validateSearch: z.object({
@@ -263,13 +279,25 @@ function NewReservationPage() {
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="grid gap-2">
                   <Label htmlFor="reservation-date">Fecha</Label>
-                  <Input
-                    id="reservation-date"
-                    type="date"
-                    required
-                    value={date}
-                    onChange={(event) => setDate(event.target.value)}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal h-10 gap-2">
+                        <CalendarDays className="size-4 text-muted-foreground shrink-0" />
+                        {formatDatePE(date)}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={date ? new Date(date + 'T12:00:00') : undefined}
+                        onSelect={(val) => {
+                          if (val) {
+                            setDate(localDateValue(val))
+                          }
+                        }}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="reservation-start">Inicio</Label>
