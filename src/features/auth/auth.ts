@@ -18,7 +18,13 @@ import {
 import { AppError, validationError } from '@/lib/errors'
 import { hashPassword, verifyPassword } from '@/lib/password.server'
 
-import { createUserSchema, loginSchema, updateUserSchema } from './auth.schema'
+import {
+  createUserSchema,
+  loginSchema,
+  updateUserSchema,
+  updateProfileSchema,
+  changePasswordSchema,
+} from './auth.schema'
 import type { SafeUser } from './auth.schema'
 
 const dummyPasswordHash =
@@ -470,3 +476,113 @@ export const updateUser = createServerFn({ method: 'POST' })
 
     return { user: after }
   })
+
+export const updateProfile = createServerFn({ method: 'POST' })
+  .middleware([authErrorMiddleware])
+  .validator((data) => parseInput(updateProfileSchema, data))
+  .handler(async ({ data }) => {
+    assertSameOrigin()
+    const session = await requireSession()
+    const now = Date.now()
+    const requestId = randomUUID()
+
+    const updated = db.transaction((tx) => {
+      const current = tx
+        .select()
+        .from(users)
+        .where(eq(users.id, session.user.id))
+        .limit(1)
+        .get()
+
+      if (!current) {
+        throw new AppError('USER_NOT_FOUND', 'No se encontró el usuario')
+      }
+
+      tx.update(users)
+        .set({ name: data.name, updatedAt: now })
+        .where(eq(users.id, session.user.id))
+        .run()
+
+      const safe = {
+        ...session.user,
+        name: data.name,
+      }
+
+      tx.insert(auditLogs)
+        .values({
+          id: randomUUID(),
+          actorUserId: session.user.id,
+          action: 'user.update_profile',
+          entityType: 'user',
+          entityId: session.user.id,
+          beforeJson: JSON.stringify(toSafeUser(current)),
+          afterJson: JSON.stringify(safe),
+          createdAt: now,
+          requestId,
+        })
+        .run()
+
+      return safe
+    })
+
+    return { user: updated }
+  })
+
+export const changePassword = createServerFn({ method: 'POST' })
+  .middleware([authErrorMiddleware])
+  .validator((data) => parseInput(changePasswordSchema, data))
+  .handler(async ({ data }) => {
+    assertSameOrigin()
+    const session = await requireSession()
+    const now = Date.now()
+    const requestId = randomUUID()
+
+    const current = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, session.user.id))
+      .limit(1)
+      .get()
+
+    if (!current) {
+      throw new AppError('USER_NOT_FOUND', 'No se encontró el usuario')
+    }
+
+    const passwordMatches = await verifyPassword(
+      current.passwordHash,
+      data.currentPassword,
+    )
+
+    if (!passwordMatches) {
+      throw validationError({ currentPassword: ['La contraseña actual es incorrecta'] })
+    }
+
+    const newHash = await hashPassword(data.newPassword)
+
+    db.transaction((tx) => {
+      tx.update(users)
+        .set({ passwordHash: newHash, updatedAt: now })
+        .where(eq(users.id, session.user.id))
+        .run()
+
+      tx.update(sessions)
+        .set({ revokedAt: now })
+        .where(
+          and(eq(sessions.userId, session.user.id), isNull(sessions.revokedAt)),
+        )
+        .run()
+
+      tx.insert(auditLogs)
+        .values({
+          id: randomUUID(),
+          actorUserId: session.user.id,
+          action: 'user.change_password',
+          entityType: 'user',
+          entityId: session.user.id,
+          createdAt: now,
+          requestId,
+        })
+        .run()
+    })
+  })
+
