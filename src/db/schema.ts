@@ -147,6 +147,45 @@ export const courtHours = sqliteTable(
   ],
 )
 
+export const rateRules = sqliteTable(
+  'rate_rules',
+  {
+    id: text('id').primaryKey(),
+    courtId: text('court_id').references(() => courts.id),
+    name: text('name').notNull(),
+    dayOfWeek: integer('day_of_week'),
+    startsAt: text('starts_at').notNull(),
+    endsAt: text('ends_at').notNull(),
+    pricePerHourCents: integer('price_per_hour_cents').notNull(),
+    effectiveFrom: text('effective_from').notNull(),
+    effectiveTo: text('effective_to'),
+    isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
+    createdAt: integer('created_at', { mode: 'number' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'number' }).notNull(),
+  },
+  (table) => [
+    index('rate_rules_lookup_idx').on(
+      table.courtId,
+      table.dayOfWeek,
+      table.effectiveFrom,
+    ),
+    check('rate_rules_name_not_empty', sql`length(trim(${table.name})) > 0`),
+    check(
+      'rate_rules_day_valid',
+      sql`${table.dayOfWeek} is null or ${table.dayOfWeek} between 0 and 6`,
+    ),
+    check('rate_rules_price_positive', sql`${table.pricePerHourCents} > 0`),
+    check(
+      'rate_rules_price_even_cents',
+      sql`${table.pricePerHourCents} % 2 = 0`,
+    ),
+    check(
+      'rate_rules_effective_range_valid',
+      sql`${table.effectiveTo} is null or ${table.effectiveTo} >= ${table.effectiveFrom}`,
+    ),
+  ],
+)
+
 export const customers = sqliteTable(
   'customers',
   {
@@ -267,6 +306,13 @@ export const courtsRelations = relations(courts, ({ many }) => ({
 export const courtHoursRelations = relations(courtHours, ({ one }) => ({
   court: one(courts, {
     fields: [courtHours.courtId],
+    references: [courts.id],
+  }),
+}))
+
+export const rateRulesRelations = relations(rateRules, ({ one }) => ({
+  court: one(courts, {
+    fields: [rateRules.courtId],
     references: [courts.id],
   }),
 }))

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as CourtsRouteImport } from './routes/courts'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as RatesRouteImport } from './routes/rates'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReservationsRouteImport } from './routes/reservations'
 import { Route as ReservationsReservationIdRouteImport } from './routes/reservations.$reservationId'
@@ -37,6 +38,11 @@ const CourtsRoute = CourtsRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RatesRoute = RatesRouteImport.update({
+  id: '/rates',
+  path: '/rates',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/calendar': typeof CalendarRoute
   '/courts': typeof CourtsRoute
   '/login': typeof LoginRoute
+  '/rates': typeof RatesRoute
   '/register': typeof RegisterRoute
   '/reservations': typeof ReservationsRouteWithChildren
   '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
@@ -83,6 +90,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof CalendarRoute
   '/courts': typeof CourtsRoute
   '/login': typeof LoginRoute
+  '/rates': typeof RatesRoute
   '/register': typeof RegisterRoute
   '/reservations': typeof ReservationsRouteWithChildren
   '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
@@ -95,6 +103,7 @@ export interface FileRoutesById {
   '/calendar': typeof CalendarRoute
   '/courts': typeof CourtsRoute
   '/login': typeof LoginRoute
+  '/rates': typeof RatesRoute
   '/register': typeof RegisterRoute
   '/reservations': typeof ReservationsRouteWithChildren
   '/reservations/$reservationId': typeof ReservationsReservationIdRouteWithChildren
@@ -108,6 +117,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/courts'
     | '/login'
+    | '/rates'
     | '/register'
     | '/reservations'
     | '/reservations/$reservationId'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/courts'
     | '/login'
+    | '/rates'
     | '/register'
     | '/reservations'
     | '/reservations/$reservationId'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/courts'
     | '/login'
+    | '/rates'
     | '/register'
     | '/reservations'
     | '/reservations/$reservationId'
@@ -142,6 +154,7 @@ export interface RootRouteChildren {
   CalendarRoute: typeof CalendarRoute
   CourtsRoute: typeof CourtsRoute
   LoginRoute: typeof LoginRoute
+  RatesRoute: typeof RatesRoute
   RegisterRoute: typeof RegisterRoute
   ReservationsRoute: typeof ReservationsRouteWithChildren
 }
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rates': {
+      id: '/rates'
+      path: '/rates'
+      fullPath: '/rates'
+      preLoaderRoute: typeof RatesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -247,6 +267,7 @@ const rootRouteChildren: RootRouteChildren = {
   CalendarRoute: CalendarRoute,
   CourtsRoute: CourtsRoute,
   LoginRoute: LoginRoute,
+  RatesRoute: RatesRoute,
   RegisterRoute: RegisterRoute,
   ReservationsRoute: ReservationsRouteWithChildren,
 }

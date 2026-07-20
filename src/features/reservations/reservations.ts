@@ -9,6 +9,7 @@ import {
   courts,
   customers,
   idempotencyKeys,
+  rateRules,
   reservations,
 } from '@/db/schema'
 import { db, sqlite } from '@/lib/db.server'
@@ -32,6 +33,7 @@ import {
   findReservationConflict,
   reservationTransactionConfig,
 } from './reservation-conflicts'
+import { calculateQuoteFromRules } from '@/features/rates/rates'
 
 const reservationErrorMiddleware = createMiddleware({
   type: 'function',
@@ -86,6 +88,9 @@ function toSafeReservation(
     startsAt: reservation.startsAt,
     endsAt: reservation.endsAt,
     status: reservation.status,
+    baseAmountCents: reservation.baseAmountCents,
+    discountAmountCents: reservation.discountAmountCents,
+    finalAmountCents: reservation.finalAmountCents,
     createdAt: reservation.createdAt,
   }
 }
@@ -367,6 +372,19 @@ export const createReservation = createServerFn({ method: 'POST' })
       if (!customer) {
         throw new AppError('CUSTOMER_NOT_FOUND', 'No se encontró el cliente')
       }
+      const quote = calculateQuoteFromRules(
+        tx.select().from(rateRules).where(eq(rateRules.isActive, true)).all(),
+        data.date,
+        data.startsAt,
+        data.endsAt,
+        data.courtId,
+      )
+      if (data.expectedFinalAmountCents !== quote.finalAmountCents) {
+        throw new AppError(
+          'QUOTE_CHANGED',
+          'La tarifa cambió. Revisa la cotización antes de continuar',
+        )
+      }
       const conflict = findReservationConflict(
         sqlite,
         data.courtId,
@@ -387,9 +405,9 @@ export const createReservation = createServerFn({ method: 'POST' })
         startsAt,
         endsAt,
         status: 'pending' as const,
-        baseAmountCents: 0,
-        discountAmountCents: 0,
-        finalAmountCents: 0,
+        baseAmountCents: quote.baseAmountCents,
+        discountAmountCents: quote.discountAmountCents,
+        finalAmountCents: quote.finalAmountCents,
         overrideReason: null,
         createdBy: session.user.id,
         cancelledBy: null,
@@ -524,10 +542,44 @@ export const updateReservation = createServerFn({ method: 'POST' })
         )
       }
 
+      const scheduleChanged =
+        current.reservation.courtId !== data.courtId ||
+        current.reservation.startsAt !== startsAt ||
+        current.reservation.endsAt !== endsAt
+      const quote = scheduleChanged
+        ? calculateQuoteFromRules(
+            tx
+              .select()
+              .from(rateRules)
+              .where(eq(rateRules.isActive, true))
+              .all(),
+            data.date,
+            data.startsAt,
+            data.endsAt,
+            data.courtId,
+          )
+        : {
+            baseAmountCents: current.reservation.baseAmountCents,
+            discountAmountCents: current.reservation.discountAmountCents,
+            finalAmountCents: current.reservation.finalAmountCents,
+          }
+      if (
+        scheduleChanged &&
+        data.expectedFinalAmountCents !== quote.finalAmountCents
+      ) {
+        throw new AppError(
+          'QUOTE_CHANGED',
+          'La tarifa cambió. Revisa la cotización antes de continuar',
+        )
+      }
+
       const next = {
         courtId: data.courtId,
         startsAt,
         endsAt,
+        baseAmountCents: quote.baseAmountCents,
+        discountAmountCents: quote.discountAmountCents,
+        finalAmountCents: quote.finalAmountCents,
         updatedAt: now,
       }
       tx.update(reservations)

@@ -20,8 +20,10 @@ import {
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { getErrorCode } from '@/lib/errors'
 import { getCurrentUser } from '@/features/auth/auth'
 import { listCourts } from '@/features/courts/courts'
+import { quoteReservation } from '@/features/rates/rates'
 import {
   createCustomer,
   createReservation,
@@ -83,6 +85,15 @@ function NewReservationPage() {
   const [idempotencyKey] = useState(() => crypto.randomUUID())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [quote, setQuote] = useState<{
+    baseAmountCents: number
+    finalAmountCents: number
+    segments: Array<{ startsAt: string; endsAt: string; amountCents: number }>
+  } | null>(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [quoteError, setQuoteError] = useState<string | null>(null)
+  const quoteRequestId = useRef(0)
+  const [quoteRefresh, setQuoteRefresh] = useState(0)
 
   useEffect(() => {
     const currentRequestId = ++customerRequestId.current
@@ -105,6 +116,41 @@ function NewReservationPage() {
     }, 250)
     return () => window.clearTimeout(timer)
   }, [customerQuery, initialCustomers])
+
+  useEffect(() => {
+    const currentRequestId = ++quoteRequestId.current
+    if (!courtId || !date || !startsAt || !endsAt) {
+      setQuote(null)
+      setQuoteError(null)
+      setQuoteLoading(false)
+      return
+    }
+    setQuoteLoading(true)
+    setQuoteError(null)
+    void quoteReservation({
+      data: { courtId, date, startsAt, endsAt },
+    })
+      .then(
+        (result) => {
+          if (currentRequestId !== quoteRequestId.current) return
+          setQuote(result.quote)
+          setQuoteError(null)
+          setError(null)
+        },
+        (caughtError) => {
+          if (currentRequestId !== quoteRequestId.current) return
+          setQuote(null)
+          setQuoteError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : 'No hay una tarifa aplicable para esta franja',
+          )
+        },
+      )
+      .finally(() => {
+        if (currentRequestId === quoteRequestId.current) setQuoteLoading(false)
+      })
+  }, [courtId, date, startsAt, endsAt, quoteRefresh])
 
   async function handleCreateCustomer() {
     setLoading(true)
@@ -132,17 +178,34 @@ function NewReservationPage() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!quote || quoteLoading) {
+      setError('Espera a que exista una cotización válida antes de guardar')
+      return
+    }
     setLoading(true)
     setError(null)
     try {
       const result = await createReservation({
-        data: { courtId, customerId, date, startsAt, endsAt, idempotencyKey },
+        data: {
+          courtId,
+          customerId,
+          date,
+          startsAt,
+          endsAt,
+          idempotencyKey,
+          expectedFinalAmountCents: quote.finalAmountCents,
+        },
       })
       await navigate({
         to: '/reservations/$reservationId',
         params: { reservationId: result.reservation.id },
       })
     } catch (caughtError) {
+      if (getErrorCode(caughtError) === 'QUOTE_CHANGED') {
+        setQuote(null)
+        setQuoteError('La tarifa cambió. Actualizando la cotización…')
+        setQuoteRefresh((current) => current + 1)
+      }
       setError(
         caughtError instanceof Error
           ? caughtError.message
@@ -340,6 +403,43 @@ function NewReservationPage() {
                   Nuevo cliente
                 </Button>
               </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Cotización</p>
+                    <p className="text-xs text-muted-foreground">
+                      El servidor calculará y congelará este importe.
+                    </p>
+                  </div>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {quoteLoading
+                      ? 'Calculando…'
+                      : quote
+                        ? formatMoney(quote.finalAmountCents)
+                        : '—'}
+                  </p>
+                </div>
+                {quoteError && (
+                  <p className="mt-2 text-sm text-destructive">{quoteError}</p>
+                )}
+                {quote && (
+                  <div className="mt-3 grid gap-1 border-t pt-3 text-xs text-muted-foreground">
+                    {quote.segments.map((segment) => (
+                      <div
+                        key={`${segment.startsAt}-${segment.endsAt}`}
+                        className="flex justify-between gap-3"
+                      >
+                        <span>
+                          {segment.startsAt}–{segment.endsAt}
+                        </span>
+                        <span className="tabular-nums">
+                          {formatMoney(segment.amountCents)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               {newCustomerOpen && (
                 <div className="grid gap-3 rounded-lg border bg-muted/30 p-4">
                   <p className="text-sm font-medium">Alta rápida</p>
@@ -376,7 +476,10 @@ function NewReservationPage() {
                 >
                   Cancelar
                 </Link>
-                <Button type="submit" disabled={loading || !customerId}>
+                <Button
+                  type="submit"
+                  disabled={loading || !customerId || !quote || quoteLoading}
+                >
                   {loading ? 'Guardando…' : 'Crear reserva'}
                 </Button>
               </div>
@@ -386,4 +489,11 @@ function NewReservationPage() {
       </div>
     </DashboardLayout>
   )
+}
+
+function formatMoney(amountCents: number) {
+  return new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN',
+  }).format(amountCents / 100)
 }

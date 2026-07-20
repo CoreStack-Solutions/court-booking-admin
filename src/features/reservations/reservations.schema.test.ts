@@ -12,6 +12,7 @@ const validReservation = {
   startsAt: '08:00',
   endsAt: '09:30',
   idempotencyKey: '00000000-0000-4000-8000-000000000003',
+  expectedFinalAmountCents: 4500,
 }
 
 describe('createReservationSchema', () => {
@@ -46,6 +47,7 @@ describe('updateReservationSchema', () => {
         date: validReservation.date,
         startsAt: '10:00',
         endsAt: '11:30',
+        expectedFinalAmountCents: 4500,
       }).success,
     ).toBe(true)
   })
@@ -58,6 +60,7 @@ describe('updateReservationSchema', () => {
         date: validReservation.date,
         startsAt: '23:30',
         endsAt: '00:30',
+        expectedFinalAmountCents: 4500,
       }).success,
     ).toBe(false)
   })

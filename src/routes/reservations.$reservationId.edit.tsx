@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   createFileRoute,
   Link,
@@ -21,6 +21,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getCurrentUser } from '@/features/auth/auth'
 import { listCourts } from '@/features/courts/courts'
+import { quoteReservation } from '@/features/rates/rates'
+import { getErrorCode } from '@/lib/errors'
 import {
   getReservation,
   updateReservation,
@@ -84,9 +86,66 @@ function EditReservationPage() {
   const [endsAt, setEndsAt] = useState(localTime(reservation.endsAt))
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const originalDate = localDate(reservation.startsAt)
+  const originalStartsAt = localTime(reservation.startsAt)
+  const originalEndsAt = localTime(reservation.endsAt)
+  const scheduleChanged =
+    courtId !== reservation.courtId ||
+    date !== originalDate ||
+    startsAt !== originalStartsAt ||
+    endsAt !== originalEndsAt
+  const [quote, setQuote] = useState<{ finalAmountCents: number } | null>(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [quoteError, setQuoteError] = useState<string | null>(null)
+  const [quoteRefresh, setQuoteRefresh] = useState(0)
+  const quoteRequestId = useRef(0)
+
+  useEffect(() => {
+    const currentRequestId = ++quoteRequestId.current
+    if (!scheduleChanged) {
+      if (currentRequestId !== quoteRequestId.current) return
+      setQuote({ finalAmountCents: reservation.finalAmountCents })
+      setQuoteLoading(false)
+      setQuoteError(null)
+      return
+    }
+    setQuoteLoading(true)
+    setQuoteError(null)
+    void quoteReservation({ data: { courtId, date, startsAt, endsAt } }).then(
+      (result) => {
+        if (currentRequestId !== quoteRequestId.current) return
+        setQuote(result.quote)
+        setQuoteLoading(false)
+        setQuoteError(null)
+        setError(null)
+      },
+      (caughtError) => {
+        if (currentRequestId !== quoteRequestId.current) return
+        setQuote(null)
+        setQuoteLoading(false)
+        setQuoteError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : 'No hay una tarifa aplicable para esta franja',
+        )
+      },
+    )
+  }, [
+    courtId,
+    date,
+    startsAt,
+    endsAt,
+    quoteRefresh,
+    scheduleChanged,
+    reservation,
+  ])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!quote || quoteLoading) {
+      setError('Espera a que exista una cotización válida antes de guardar')
+      return
+    }
     setLoading(true)
     setError(null)
     try {
@@ -97,6 +156,7 @@ function EditReservationPage() {
           date,
           startsAt,
           endsAt,
+          expectedFinalAmountCents: quote.finalAmountCents,
         },
       })
       await navigate({
@@ -104,6 +164,11 @@ function EditReservationPage() {
         params: { reservationId: reservation.id },
       })
     } catch (caughtError) {
+      if (getErrorCode(caughtError) === 'QUOTE_CHANGED') {
+        setQuote(null)
+        setQuoteError('La tarifa cambió. Actualizando la cotización…')
+        setQuoteRefresh((current) => current + 1)
+      }
       setError(
         caughtError instanceof Error
           ? caughtError.message
@@ -205,6 +270,26 @@ function EditReservationPage() {
                   {reservation.customerName}
                 </p>
               </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium">Nueva cotización</p>
+                    <p className="text-xs text-muted-foreground">
+                      El importe se actualiza solo si cambia la franja.
+                    </p>
+                  </div>
+                  <p className="text-lg font-semibold tabular-nums">
+                    {quoteLoading
+                      ? 'Calculando…'
+                      : quote
+                        ? formatMoney(quote.finalAmountCents)
+                        : '—'}
+                  </p>
+                </div>
+                {quoteError && (
+                  <p className="mt-2 text-sm text-destructive">{quoteError}</p>
+                )}
+              </div>
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
@@ -219,7 +304,10 @@ function EditReservationPage() {
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={loading}>
+                <Button
+                  type="submit"
+                  disabled={loading || !quote || quoteLoading}
+                >
                   {loading ? 'Guardando…' : 'Guardar cambios'}
                 </Button>
               </div>
@@ -229,4 +317,11 @@ function EditReservationPage() {
       </div>
     </DashboardLayout>
   )
+}
+
+function formatMoney(amountCents: number) {
+  return new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN',
+  }).format(amountCents / 100)
 }

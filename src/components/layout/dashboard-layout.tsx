@@ -3,6 +3,7 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
   Bell,
   CalendarDays,
+  Clock3,
   LayoutDashboard,
   LogOut,
   MapPin,
@@ -41,6 +42,12 @@ const navSections = [
       },
       { label: 'Reservas', icon: CalendarDays, href: '/reservations' as const },
       { label: 'Canchas', icon: MapPin, href: '/courts' as const },
+      {
+        label: 'Tarifas',
+        icon: Clock3,
+        href: '/rates' as const,
+        adminOnly: true,
+      },
       { label: 'Clientes', icon: Users, href: undefined },
       { label: 'Caja y reportes', icon: BarChart3, href: undefined },
     ],
@@ -101,61 +108,68 @@ function SidebarContent({
             <p className="px-3 pb-2 pt-1 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/45">
               {section.title}
             </p>
-            {section.items.map((item) =>
-              item.href ? (
-                <Link
-                  key={item.label}
-                  to={item.href}
-                  onClick={() => onNavigate(item.label)}
-                  className={cn(
-                    'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                    activeNav === item.href &&
-                      'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
-                  )}
-                >
-                  <item.icon className="size-[1.1rem]" aria-hidden="true" />
-                  {item.label}
-                  {item.badge && (
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
-                        activeNav === item.href &&
-                          'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
-                      )}
-                    >
-                      {item.badge}
-                    </Badge>
-                  )}
-                </Link>
-              ) : (
-                <Button
-                  key={item.label}
-                  variant="ghost"
-                  className={cn(
-                    'w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                    activeNav === item.label &&
-                      'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
-                  )}
-                  onClick={() => onNavigate(item.label)}
-                >
-                  <item.icon className="size-[1.1rem]" aria-hidden="true" />
-                  {item.label}
-                  {item.badge && (
-                    <Badge
-                      variant="secondary"
-                      className={cn(
-                        'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
-                        activeNav === item.label &&
-                          'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
-                      )}
-                    >
-                      {item.badge}
-                    </Badge>
-                  )}
-                </Button>
-              ),
-            )}
+            {section.items
+              .filter(
+                (item) =>
+                  !('adminOnly' in item) ||
+                  !item.adminOnly ||
+                  user.role === 'admin',
+              )
+              .map((item) =>
+                item.href ? (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    onClick={() => onNavigate(item.label)}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                      activeNav === item.href &&
+                        'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
+                    )}
+                  >
+                    <item.icon className="size-[1.1rem]" aria-hidden="true" />
+                    {item.label}
+                    {item.badge && (
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
+                          activeNav === item.href &&
+                            'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
+                        )}
+                      >
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Link>
+                ) : (
+                  <Button
+                    key={item.label}
+                    variant="ghost"
+                    className={cn(
+                      'w-full justify-start gap-3 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                      activeNav === item.label &&
+                        'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground',
+                    )}
+                    onClick={() => onNavigate(item.label)}
+                  >
+                    <item.icon className="size-[1.1rem]" aria-hidden="true" />
+                    {item.label}
+                    {item.badge && (
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          'ml-auto border-0 bg-sidebar-accent text-sidebar-accent-foreground',
+                          activeNav === item.label &&
+                            'bg-sidebar-primary-foreground/15 text-sidebar-primary-foreground',
+                        )}
+                      >
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Button>
+                ),
+              )}
           </div>
         ))}
       </nav>

@@ -31,6 +31,7 @@ export const createReservationSchema = z
     startsAt: z.string().regex(timePattern, 'Hora inválida'),
     endsAt: z.string().regex(timePattern, 'Hora inválida'),
     idempotencyKey: z.string().uuid(),
+    expectedFinalAmountCents: z.number().int().nonnegative(),
   })
   .superRefine((value, context) => {
     const startMinutes = toMinutes(value.startsAt)
@@ -79,6 +80,7 @@ export const updateReservationSchema = z
       }, 'Fecha inválida'),
     startsAt: z.string().regex(timePattern, 'Hora inválida'),
     endsAt: z.string().regex(timePattern, 'Hora inválida'),
+    expectedFinalAmountCents: z.number().int().nonnegative(),
   })
   .superRefine((value, context) => {
     const startMinutes = toMinutes(value.startsAt)
@@ -124,6 +126,9 @@ export type SafeReservation = {
   startsAt: number
   endsAt: number
   status: z.infer<typeof reservationStatusSchema>
+  baseAmountCents: number
+  discountAmountCents: number
+  finalAmountCents: number
   createdAt: number
 }
 
