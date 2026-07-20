@@ -48,8 +48,8 @@ const navSections = [
         href: '/rates' as const,
         adminOnly: true,
       },
-      { label: 'Clientes', icon: Users, href: undefined },
-      { label: 'Caja y reportes', icon: BarChart3, href: undefined },
+      { label: 'Clientes', icon: Users, href: '/customers' as const },
+      { label: 'Caja y reportes', icon: BarChart3, href: '/reports' as const },
     ],
   },
   {
