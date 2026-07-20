@@ -5,6 +5,7 @@ import { drizzle } from 'drizzle-orm/better-sqlite3'
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
 
 import * as schema from '@/db/schema'
+import { seedProduction } from '@/db/seed-prod'
 
 const isProd = process.env.NODE_ENV === 'production'
 const databaseUrl =
@@ -25,27 +26,31 @@ export const db = drizzle(sqlite, { schema })
 // Auto-migrate + seed on first request in production
 if (isProd) {
   try {
-    // Check if users table exists and has data
     const tableCheck = sqlite.prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
     ).get()
 
     if (!tableCheck) {
-      // No tables yet, run migrations
+      console.log('[db] No tables found, running migrations...')
       migrate(db, { migrationsFolder: './src/db/migrations' })
-      // Seed after migration
-      const { seedProduction } = await import('@/db/seed-prod')
-      await seedProduction(db)
+      console.log('[db] Migrations complete, seeding...')
+      seedProduction(db).then(() => {
+        console.log('[db] Seed complete')
+      }).catch((err) => {
+        console.error('[db] Seed failed:', err)
+      })
     } else {
-      // Tables exist, check if admin user exists
       const userCheck = sqlite.prepare('SELECT id FROM users LIMIT 1').get()
       if (!userCheck) {
-        // No users, seed data
-        const { seedProduction } = await import('@/db/seed-prod')
-        await seedProduction(db)
+        console.log('[db] No users found, seeding...')
+        seedProduction(db).then(() => {
+          console.log('[db] Seed complete')
+        }).catch((err) => {
+          console.error('[db] Seed failed:', err)
+        })
       }
     }
   } catch (error) {
-    console.error('DB init error:', error)
+    console.error('[db] Init error:', error)
   }
 }
