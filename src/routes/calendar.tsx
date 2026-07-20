@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Clock3,
   RefreshCw,
+  Lock,
 } from 'lucide-react'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -389,12 +390,20 @@ function CalendarPage() {
                                 </Link>
                               )
                             ) : (
-                              <div
-                                aria-label={`${court.name}, ${time}: ${isPast ? 'Pasado' : 'No disponible'}`}
-                                className="flex min-h-[3.25rem] items-center justify-center rounded-lg border border-border bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.03)_6px,rgba(100,100,100,0.03)_12px)] bg-muted/40 text-[0.7rem] text-muted-foreground/40 select-none cursor-not-allowed"
-                              >
-                                {isPast ? 'Pasado' : 'No disponible'}
-                              </div>
+                              isPast ? (
+                                <div
+                                  aria-label={`${court.name}, ${time}: Pasado`}
+                                  className="flex min-h-[3.25rem] items-center justify-center rounded-lg border border-border/50 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.02)_6px,rgba(100,100,100,0.02)_12px)] bg-muted/20 select-none cursor-not-allowed"
+                                />
+                              ) : (
+                                <div
+                                  aria-label={`${court.name}, ${time}: No disponible`}
+                                  className="flex min-h-[3.25rem] items-center justify-center gap-1.5 rounded-lg border border-border/80 bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.03)_6px,rgba(100,100,100,0.03)_12px)] bg-muted/40 text-[0.7rem] text-muted-foreground/45 font-semibold select-none cursor-not-allowed"
+                                >
+                                  <Lock className="size-3 text-muted-foreground/40" />
+                                  Cerrado
+                                </div>
+                              )
                             )}
                           </div>
                         )
