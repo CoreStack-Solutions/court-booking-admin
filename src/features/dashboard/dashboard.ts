@@ -8,6 +8,7 @@ import {
   courtHours,
   courts,
   customers,
+  payments,
   reservations,
   users,
 } from '@/db/schema'
@@ -203,6 +204,31 @@ export const getDashboardSummary = createServerFn({ method: 'GET' })
       .orderBy(desc(auditLogs.createdAt))
       .limit(8)
 
+    const dayPayments = await db
+      .select()
+      .from(payments)
+      .where(
+        and(
+          gte(payments.paidAt, dayStart),
+          lt(payments.paidAt, dayEnd),
+          eq(payments.status, 'paid'),
+        ),
+      )
+
+    const cashCents = dayPayments
+      .filter((p) => p.method === 'cash')
+      .reduce((sum, p) => sum + p.amountCents, 0)
+    const yapeCents = dayPayments
+      .filter((p) => p.method === 'yape')
+      .reduce((sum, p) => sum + p.amountCents, 0)
+    const plinCents = dayPayments
+      .filter((p) => p.method === 'plin')
+      .reduce((sum, p) => sum + p.amountCents, 0)
+    const bankTransferCents = dayPayments
+      .filter((p) => p.method === 'bank_transfer')
+      .reduce((sum, p) => sum + p.amountCents, 0)
+    const totalCents = cashCents + yapeCents + plinCents + bankTransferCents
+
     const summary: DashboardSummary = {
       date: data.date,
       reservations: counts,
@@ -229,7 +255,16 @@ export const getDashboardSummary = createServerFn({ method: 'GET' })
         createdAt: audit.createdAt,
         actorName: actor,
       })),
-      financialsAvailable: false,
+      financialsAvailable: true,
+      financials: {
+        totalCents,
+        byMethod: {
+          cashCents,
+          yapeCents,
+          plinCents,
+          bankTransferCents,
+        },
+      },
       inventoryAvailable: false,
     }
     return { summary }

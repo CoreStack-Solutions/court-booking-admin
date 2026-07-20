@@ -6,6 +6,7 @@ import {
   redirect,
   useNavigate,
   useRouterState,
+  useRouter,
 } from '@tanstack/react-router'
 import {
   ArrowLeft,
@@ -13,7 +14,16 @@ import {
   Clock3,
   Pencil,
   UserRound,
+  Plus,
 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -39,6 +49,10 @@ import {
   getReservation,
   updateReservationStatus,
 } from '@/features/reservations/reservations'
+import {
+  listReservationPayments,
+  recordReservationPayment,
+} from '@/features/payments/payments'
 import type { SafeReservation } from '@/features/reservations/reservations.schema'
 
 export const Route = createFileRoute('/reservations/$reservationId')({
@@ -51,8 +65,13 @@ export const Route = createFileRoute('/reservations/$reservationId')({
     }
     return { user: current.user }
   },
-  loader: async ({ params }) =>
-    getReservation({ data: { id: params.reservationId } }),
+  loader: async ({ params }) => {
+    const res = await getReservation({ data: { id: params.reservationId } })
+    const pmts = await listReservationPayments({
+      data: { reservationId: params.reservationId },
+    })
+    return { reservation: res.reservation, payments: pmts.payments }
+  },
   component: ReservationDetailRouteComponent,
 })
 
@@ -72,6 +91,20 @@ function formatDateTime(timestamp: number) {
   }).format(timestamp)
 }
 
+function formatMoney(amountCents: number) {
+  return new Intl.NumberFormat('es-PE', {
+    style: 'currency',
+    currency: 'PEN',
+  }).format(amountCents / 100)
+}
+
+const paymentMethodLabels: Record<string, string> = {
+  cash: 'Efectivo',
+  yape: 'Yape',
+  plin: 'Plin',
+  bank_transfer: 'Transferencia bancaria',
+}
+
 function ReservationDetailRouteComponent() {
   const activeRouteId = useRouterState({
     select: (state) => state.matches.at(-1)?.routeId,
@@ -84,14 +117,27 @@ function ReservationDetailRouteComponent() {
 }
 
 function ReservationDetailPage() {
-  const { reservation } = Route.useLoaderData()
+  const { reservation, payments } = Route.useLoaderData()
   const { user } = Route.useRouteContext()
   const navigate = useNavigate()
+  const router = useRouter()
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [payOpen, setPayOpen] = useState(false)
   const [reason, setReason] = useState('')
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const canOperate = user.role !== 'viewer'
+
+  // Payment form states
+  const [payAmount, setPayAmount] = useState('')
+  const [payMethod, setPayMethod] = useState<'cash' | 'yape' | 'plin' | 'bank_transfer'>('cash')
+  const [payReference, setPayReference] = useState('')
+
+  const totalPaid = payments.reduce(
+    (sum, p) => (p.status === 'paid' ? sum + p.amountCents : sum),
+    0,
+  )
+  const remaining = reservation.finalAmountCents - totalPaid
 
   async function changeStatus(
     status: 'confirmed' | 'completed' | 'no_show' | 'cancelled',
@@ -110,6 +156,42 @@ function ReservationDetailPage() {
         caughtError instanceof Error
           ? caughtError.message
           : 'No se pudo actualizar la reserva',
+      )
+    } finally {
+      setPending(false)
+    }
+  }
+
+  async function handleRecordPayment(e: React.FormEvent) {
+    e.preventDefault()
+    setPending(true)
+    setError(null)
+    try {
+      const amountCents = Math.round(parseFloat(payAmount) * 100)
+      if (isNaN(amountCents) || amountCents <= 0) {
+        throw new Error('Monto inválido')
+      }
+      if (amountCents > remaining) {
+        throw new Error('El monto ingresado supera el saldo restante')
+      }
+      await recordReservationPayment({
+        data: {
+          reservationId: reservation.id,
+          amountCents,
+          method: payMethod,
+          reference: payReference.trim() || undefined,
+          idempotencyKey: window.crypto.randomUUID(),
+        },
+      })
+      setPayOpen(false)
+      setPayAmount('')
+      setPayReference('')
+      router.invalidate()
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof Error
+          ? caughtError.message
+          : 'No se pudo registrar el pago',
       )
     } finally {
       setPending(false)
@@ -194,6 +276,95 @@ function ReservationDetailPage() {
                   {formatDateTime(reservation.createdAt)}
                 </p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pagos y Tarifas */}
+        <Card className="mt-6">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <div>
+              <CardTitle>Pagos y Tarifas</CardTitle>
+              <CardDescription>
+                Detalle financiero e historial de cobros realizados.
+              </CardDescription>
+            </div>
+            {canOperate && remaining > 0 && (
+              <Button
+                onClick={() => {
+                  setPayAmount((remaining / 100).toFixed(2))
+                  setPayOpen(true)
+                }}
+                className="gap-2"
+              >
+                <Plus className="size-4" />
+                Registrar Pago
+              </Button>
+            )}
+          </CardHeader>
+          <CardContent className="grid gap-6">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-lg border p-4 text-center">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Costo Final
+                </p>
+                <p className="mt-1 text-xl font-bold">
+                  {formatMoney(reservation.finalAmountCents)}
+                </p>
+              </div>
+              <div className="rounded-lg border p-4 text-center">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Total Pagado
+                </p>
+                <p className="mt-1 text-xl font-bold text-green-600 dark:text-green-400">
+                  {formatMoney(totalPaid)}
+                </p>
+              </div>
+              <div className="rounded-lg border p-4 text-center">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Saldo Pendiente
+                </p>
+                <p
+                  className={`mt-1 text-xl font-bold ${remaining > 0 ? 'text-red-500' : 'text-muted-foreground'}`}
+                >
+                  {formatMoney(remaining)}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="mb-3 text-sm font-semibold">Historial de pagos</h3>
+              {payments.length === 0 ? (
+                <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  No hay cobros registrados para esta reserva.
+                </div>
+              ) : (
+                <div className="divide-y rounded-lg border px-4">
+                  {payments.map((payment) => (
+                    <div
+                      key={payment.id}
+                      className="flex items-center justify-between py-3 text-sm"
+                    >
+                      <div>
+                        <p className="font-semibold">
+                          {paymentMethodLabels[payment.method]}
+                        </p>
+                        {payment.reference && (
+                          <p className="text-xs text-muted-foreground">
+                            Ref: {payment.reference}
+                          </p>
+                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {formatDateTime(payment.paidAt!)}
+                        </p>
+                      </div>
+                      <span className="font-semibold text-green-600 dark:text-green-400">
+                        + {formatMoney(payment.amountCents)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -294,6 +465,73 @@ function ReservationDetailPage() {
               {pending ? 'Cancelando…' : 'Confirmar cancelación'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Registrar Pago Dialog */}
+      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Registrar Pago</DialogTitle>
+            <DialogDescription>
+              Registra un cobro parcial o total para esta reserva.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleRecordPayment} className="grid gap-4">
+            <label className="grid gap-2 text-sm font-medium">
+              Monto a cobrar (S/.)
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={(remaining / 100).toFixed(2)}
+                required
+                value={payAmount}
+                onChange={(e) => setPayAmount(e.target.value)}
+              />
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              Método de Pago
+              <Select
+                value={payMethod}
+                onValueChange={(v) => setPayMethod(v as any)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Efectivo</SelectItem>
+                  <SelectItem value="yape">Yape</SelectItem>
+                  <SelectItem value="plin">Plin</SelectItem>
+                  <SelectItem value="bank_transfer">
+                    Transferencia bancaria
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="grid gap-2 text-sm font-medium">
+              Referencia / ID de operación (opcional)
+              <Input
+                type="text"
+                placeholder="Ej. número de celular o ID de Yape"
+                value={payReference}
+                onChange={(e) => setPayReference(e.target.value)}
+              />
+            </label>
+            <DialogFooter className="mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => setPayOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending ? 'Registrando…' : 'Registrar Pago'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </DashboardLayout>

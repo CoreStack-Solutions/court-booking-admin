@@ -176,9 +176,16 @@ function Dashboard() {
         <SummaryCard
           icon={Wallet}
           label="Ingresos"
-          value="Pendiente"
-          note="Disponible al implementar pagos"
-          muted
+          value={
+            summary.financials
+              ? formatMoney(summary.financials.totalCents)
+              : 'S/ 0.00'
+          }
+          note={
+            summary.financials
+              ? `Efe: ${formatMoney(summary.financials.byMethod.cashCents)} · Yap: ${formatMoney(summary.financials.byMethod.yapeCents)} · Pli: ${formatMoney(summary.financials.byMethod.plinCents)} · Tra: ${formatMoney(summary.financials.byMethod.bankTransferCents)}`
+              : 'Sin cobros registrados'
+          }
         />
         <SummaryCard
           icon={Package}

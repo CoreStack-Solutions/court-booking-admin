@@ -43,5 +43,14 @@ export type DashboardSummary = {
     actorName: string | null
   }>
   financialsAvailable: boolean
+  financials?: {
+    totalCents: number
+    byMethod: {
+      cashCents: number
+      yapeCents: number
+      plinCents: number
+      bankTransferCents: number
+    }
+  }
   inventoryAvailable: boolean
 }
