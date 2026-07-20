@@ -23,6 +23,13 @@ import {
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { TimePicker } from '@/components/ui/time-picker'
 import { getErrorCode } from '@/lib/errors'
 import { getCurrentUser } from '@/features/auth/auth'
@@ -259,22 +266,20 @@ function NewReservationPage() {
               )}
               <div className="grid gap-2">
                 <Label htmlFor="reservation-court">Cancha</Label>
-                <select
-                  id="reservation-court"
-                  required
-                  value={courtId}
-                  onChange={(event) => setCourtId(event.target.value)}
-                  className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                >
-                  <option value="">Selecciona una cancha</option>
-                  {courts
-                    .filter((court) => court.status === 'active')
-                    .map((court) => (
-                      <option key={court.id} value={court.id}>
-                        {court.name}
-                      </option>
-                    ))}
-                </select>
+                <Select value={courtId} onValueChange={setCourtId}>
+                  <SelectTrigger id="reservation-court">
+                    <SelectValue placeholder="Selecciona una cancha" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {courts
+                      .filter((court) => court.status === 'active')
+                      .map((court) => (
+                        <SelectItem key={court.id} value={court.id}>
+                          {court.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-4 sm:grid-cols-3">
                 <div className="grid gap-2">
@@ -493,12 +498,12 @@ function NewReservationPage() {
                 </div>
               )}
               <div className="flex justify-end gap-2">
-                <Link
-                  to="/calendar"
-                  className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-medium shadow-xs transition-colors hover:bg-accent hover:text-accent-foreground"
+                <Button
+                  variant="outline"
+                  render={<Link to="/calendar" />}
                 >
                   Cancelar
-                </Link>
+                </Button>
                 <Button
                   type="submit"
                   disabled={loading || !customerId || !quote || quoteLoading}

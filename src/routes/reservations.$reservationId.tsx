@@ -17,6 +17,8 @@ import {
   Plus,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -434,20 +436,16 @@ function ReservationDetailPage() {
               continuar.
             </DialogDescription>
           </DialogHeader>
-          <label
-            htmlFor="reservation-detail-cancellation-reason"
-            className="text-sm font-medium"
-          >
+          <Label htmlFor="reservation-detail-cancellation-reason">
             Motivo de cancelación
-          </label>
-          <textarea
+          </Label>
+          <Textarea
             id="reservation-detail-cancellation-reason"
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="Motivo de cancelación"
             maxLength={500}
             rows={4}
-            className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <DialogFooter>
             <Button
@@ -478,8 +476,8 @@ function ReservationDetailPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleRecordPayment} className="grid gap-4">
-            <label className="grid gap-2 text-sm font-medium">
-              Monto a cobrar (S/.)
+            <div className="grid gap-2">
+              <Label>Monto a cobrar (S/.)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -489,9 +487,9 @@ function ReservationDetailPage() {
                 value={payAmount}
                 onChange={(e) => setPayAmount(e.target.value)}
               />
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Método de Pago
+            </div>
+            <div className="grid gap-2">
+              <Label>Método de Pago</Label>
               <Select
                 value={payMethod}
                 onValueChange={(v) => setPayMethod(v as any)}
@@ -508,16 +506,16 @@ function ReservationDetailPage() {
                   </SelectItem>
                 </SelectContent>
               </Select>
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Referencia / ID de operación (opcional)
+            </div>
+            <div className="grid gap-2">
+              <Label>Referencia / ID de operación (opcional)</Label>
               <Input
                 type="text"
                 placeholder="Ej. número de celular o ID de Yape"
                 value={payReference}
                 onChange={(e) => setPayReference(e.target.value)}
               />
-            </label>
+            </div>
             <DialogFooter className="mt-4">
               <Button
                 type="button"

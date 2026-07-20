@@ -23,6 +23,18 @@ import {
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { TimePicker } from '@/components/ui/time-picker'
+import { CalendarDays } from 'lucide-react'
 import { getCurrentUser } from '@/features/auth/auth'
 import { listCourts } from '@/features/courts/courts'
 import {
@@ -31,6 +43,13 @@ import {
   updateRateRule,
 } from '@/features/rates/rates'
 import type { SafeRateRule } from '@/features/rates/rates.schema'
+
+function localDateValue(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 export const Route = createFileRoute('/rates')({
   beforeLoad: async ({ location }) => {
@@ -340,58 +359,58 @@ function RateDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="rate-court">Cancha</Label>
-              <select
-                id="rate-court"
-                value={form.courtId}
-                onChange={(event) => update('courtId', event.target.value)}
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              <Select
+                value={form.courtId || 'all'}
+                onValueChange={(val) => update('courtId', val === 'all' ? '' : val)}
               >
-                <option value="">Todas las canchas</option>
-                {courts.map((court) => (
-                  <option key={court.id} value={court.id}>
-                    {court.name}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="rate-court" className="w-full">
+                  <SelectValue placeholder="Todas las canchas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas las canchas</SelectItem>
+                  {courts.map((court) => (
+                    <SelectItem key={court.id} value={court.id}>
+                      {court.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="rate-day">Día</Label>
-              <select
-                id="rate-day"
-                value={form.dayOfWeek}
-                onChange={(event) => update('dayOfWeek', event.target.value)}
-                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              <Select
+                value={form.dayOfWeek !== '' ? form.dayOfWeek : 'all'}
+                onValueChange={(val) => update('dayOfWeek', val === 'all' ? '' : val)}
               >
-                <option value="">Todos los días</option>
-                {dayLabels.map((label, index) => (
-                  <option key={label} value={index}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger id="rate-day" className="w-full">
+                  <SelectValue placeholder="Todos los días" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos los días</SelectItem>
+                  {dayLabels.map((label, index) => (
+                    <SelectItem key={label} value={String(index)}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             <div className="grid gap-2">
               <Label htmlFor="rate-start">Inicio</Label>
-              <Input
-                id="rate-start"
-                type="time"
-                step="1800"
+              <TimePicker
                 value={form.startsAt}
-                onChange={(event) => update('startsAt', event.target.value)}
-                required
+                onChange={(val) => update('startsAt', val)}
+                label="Hora inicio"
               />
             </div>
             <div className="grid gap-2">
               <Label htmlFor="rate-end">Fin</Label>
-              <Input
-                id="rate-end"
-                type="time"
-                step="1800"
+              <TimePicker
                 value={form.endsAt}
-                onChange={(event) => update('endsAt', event.target.value)}
-                required
+                onChange={(val) => update('endsAt', val)}
+                label="Hora fin"
               />
             </div>
             <div className="grid gap-2">
@@ -410,34 +429,57 @@ function RateDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
               <Label htmlFor="rate-from">Vigente desde</Label>
-              <Input
-                id="rate-from"
-                type="date"
-                value={form.effectiveFrom}
-                onChange={(event) =>
-                  update('effectiveFrom', event.target.value)
-                }
-                required
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal gap-2">
+                    <CalendarDays className="size-4 text-muted-foreground" />
+                    {form.effectiveFrom ? form.effectiveFrom : <span>Seleccionar fecha</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={form.effectiveFrom ? new Date(form.effectiveFrom + 'T12:00:00') : undefined}
+                    onSelect={(val) => {
+                      if (val) update('effectiveFrom', localDateValue(val))
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="rate-to">Vigente hasta</Label>
-              <Input
-                id="rate-to"
-                type="date"
-                value={form.effectiveTo}
-                onChange={(event) => update('effectiveTo', event.target.value)}
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start text-left font-normal gap-2 text-muted-foreground">
+                    <CalendarDays className="size-4 text-muted-foreground" />
+                    {form.effectiveTo ? (
+                      <span className="text-foreground">{form.effectiveTo}</span>
+                    ) : (
+                      <span>Sin fecha de fin</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={form.effectiveTo ? new Date(form.effectiveTo + 'T12:00:00') : undefined}
+                    onSelect={(val) => {
+                      if (val) update('effectiveTo', localDateValue(val))
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
+          <div className="flex items-center gap-2 text-sm">
+            <Switch
+              id="rate-active"
               checked={form.isActive}
-              onChange={(event) => update('isActive', event.target.checked)}
+              onCheckedChange={(checked) => update('isActive', checked)}
             />
-            Regla activa
-          </label>
+            <Label htmlFor="rate-active">Regla activa</Label>
+          </div>
           <DialogFooter>
             <Button
               type="button"

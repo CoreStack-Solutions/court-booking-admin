@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/card'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { cn } from '@/lib/utils'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { getCurrentUser } from '@/features/auth/auth'
 import { getDashboardSummary } from '@/features/dashboard/dashboard'
 
@@ -69,6 +71,13 @@ function limaDateValue(date: Date) {
     parts.map((part) => [part.type, part.value]),
   )
   return `${values.year}-${values.month}-${values.day}`
+}
+
+function localDateValue(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function shiftDate(value: string, days: number) {
@@ -149,18 +158,22 @@ function Dashboard() {
           >
             <ChevronRight aria-hidden />
           </Button>
-          <label className="sr-only" htmlFor="dashboard-date">
-            Seleccionar fecha
-          </label>
-          <input
-            id="dashboard-date"
-            type="date"
-            value={summary.date}
-            onChange={(event) => {
-              if (event.target.value) setDate(event.target.value)
-            }}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Seleccionar fecha">
+                <CalendarDays className="size-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={new Date(summary.date + 'T12:00:00')}
+                onSelect={(val) => {
+                  if (val) setDate(localDateValue(val))
+                }}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
       </section>
 

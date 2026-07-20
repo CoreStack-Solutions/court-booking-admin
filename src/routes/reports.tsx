@@ -5,7 +5,11 @@ import {
   Receipt,
   Printer,
   Lock,
+  CalendarDays,
 } from 'lucide-react'
+
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -45,6 +49,13 @@ function limaDateValue(date: Date) {
     parts.map((part) => [part.type, part.value]),
   )
   return `${values.year}-${values.month}-${values.day}`
+}
+
+function localDateValue(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 export const Route = createFileRoute('/reports')({
@@ -135,18 +146,22 @@ function ReportsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="sr-only" htmlFor="reports-date">
-            Seleccionar fecha
-          </label>
-          <input
-            id="reports-date"
-            type="date"
-            value={date}
-            onChange={(e) => {
-              if (e.target.value) handleDateChange(e.target.value)
-            }}
-            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-          />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" aria-label="Seleccionar fecha">
+                <CalendarDays className="size-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={new Date(date + 'T12:00:00')}
+                onSelect={(val) => {
+                  if (val) handleDateChange(localDateValue(val))
+                }}
+              />
+            </PopoverContent>
+          </Popover>
           {user.role === 'admin' && (
             <Button
               onClick={() => {

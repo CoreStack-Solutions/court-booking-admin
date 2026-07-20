@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { getCurrentUser, updateProfile, changePassword } from '@/features/auth/auth'
 
@@ -145,24 +146,24 @@ function ProfilePage() {
                 </Alert>
               )}
 
-              <label className="grid gap-2 text-sm font-medium">
-                Nombre Completo
+              <div className="grid gap-2">
+                <Label>Nombre Completo</Label>
                 <Input
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
-              </label>
+              </div>
 
-              <label className="grid gap-2 text-sm font-medium opacity-70">
-                Correo Electrónico
+              <div className="grid gap-2 opacity-70">
+                <Label>Correo Electrónico</Label>
                 <Input
                   disabled
                   type="email"
                   value={user.email}
                   className="bg-muted cursor-not-allowed"
                 />
-              </label>
+              </div>
 
               <div className="grid gap-2 text-sm font-medium">
                 <span>Rol Asignado</span>
@@ -201,18 +202,18 @@ function ProfilePage() {
                 </Alert>
               )}
 
-              <label className="grid gap-2 text-sm font-medium">
-                Contraseña Actual
+              <div className="grid gap-2">
+                <Label>Contraseña Actual</Label>
                 <Input
                   required
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                 />
-              </label>
+              </div>
 
-              <label className="grid gap-2 text-sm font-medium">
-                Nueva Contraseña
+              <div className="grid gap-2">
+                <Label>Nueva Contraseña</Label>
                 <Input
                   required
                   type="password"
@@ -220,17 +221,17 @@ function ProfilePage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                 />
-              </label>
+              </div>
 
-              <label className="grid gap-2 text-sm font-medium">
-                Confirmar Nueva Contraseña
+              <div className="grid gap-2">
+                <Label>Confirmar Nueva Contraseña</Label>
                 <Input
                   required
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />
-              </label>
+              </div>
             </CardContent>
             <CardFooter className="border-t pt-4">
               <Button type="submit" disabled={passwordPending} className="gap-2 ml-auto">

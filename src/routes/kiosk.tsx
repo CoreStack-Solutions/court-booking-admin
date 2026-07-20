@@ -30,6 +30,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
 import { getCurrentUser } from '@/features/auth/auth'
 import {
@@ -356,12 +364,14 @@ function KioskPage() {
                       <p className="font-bold tabular-nums">
                         {formatMoney(item.priceCents * item.quantity)}
                       </p>
-                      <button
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-auto p-0 text-xs text-muted-foreground hover:text-red-500 mt-0.5"
                         onClick={() => removeFromCart(item.id)}
-                        className="text-xs text-muted-foreground hover:text-red-500 transition-colors mt-0.5"
                       >
                         Remover
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -420,28 +430,29 @@ function KioskPage() {
               <span className="font-black text-lg text-primary">{formatMoney(cartTotal)}</span>
             </div>
 
-            <label className="grid gap-2 text-sm font-medium">
-              Método de Pago
-              <select
-                className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                value={method}
-                onChange={(e) => setMethod(e.target.value as any)}
-              >
-                <option value="cash">Efectivo</option>
-                <option value="yape">Yape</option>
-                <option value="plin">Plin</option>
-                <option value="bank_transfer">Transferencia bancaria</option>
-              </select>
-            </label>
+            <div className="grid gap-2">
+              <Label>Método de Pago</Label>
+              <Select value={method} onValueChange={(v) => setMethod(v as any)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Efectivo</SelectItem>
+                  <SelectItem value="yape">Yape</SelectItem>
+                  <SelectItem value="plin">Plin</SelectItem>
+                  <SelectItem value="bank_transfer">Transferencia bancaria</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-            <label className="grid gap-2 text-sm font-medium">
-              Referencia / Código de Operación (opcional)
+            <div className="grid gap-2">
+              <Label>Referencia / Código de Operación (opcional)</Label>
               <Input
                 placeholder="Ej. Nro de Yape o Transf."
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
               />
-            </label>
+            </div>
 
             <DialogFooter className="mt-4">
               <Button

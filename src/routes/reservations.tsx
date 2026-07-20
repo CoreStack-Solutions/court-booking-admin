@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { getCurrentUser } from '@/features/auth/auth'
 import {
   listReservations,
@@ -124,13 +125,10 @@ function ReservationsPage() {
           </p>
         </div>
         {user.role !== 'viewer' && (
-          <Link
-            to="/reservations/new"
-            className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
-          >
+          <Button render={<Link to="/reservations/new" />} className="gap-2">
             <Plus className="size-4" aria-hidden />
             Nueva reserva
-          </Link>
+          </Button>
         )}
       </section>
 
@@ -147,12 +145,9 @@ function ReservationsPage() {
           </CardHeader>
           <CardContent>
             {user.role !== 'viewer' && (
-              <Link
-                to="/reservations/new"
-                className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow-xs transition-colors hover:bg-primary/90"
-              >
+              <Button render={<Link to="/reservations/new" />}>
                 Crear la primera reserva
-              </Link>
+              </Button>
             )}
           </CardContent>
         </Card>
@@ -279,14 +274,13 @@ function ReservationsPage() {
           <Label htmlFor="reservation-cancellation-reason">
             Motivo de cancelación
           </Label>
-          <textarea
+          <Textarea
             id="reservation-cancellation-reason"
             value={cancelReason}
             onChange={(event) => setCancelReason(event.target.value)}
             placeholder="Motivo de cancelación"
             maxLength={500}
             rows={4}
-            className="w-full resize-none rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <DialogFooter>
             <Button
