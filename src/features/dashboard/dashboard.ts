@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { and, asc, desc, eq, gte, gt, inArray, lt } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, gt, inArray, lt, sql } from 'drizzle-orm'
 import { createMiddleware, createServerFn } from '@tanstack/react-start'
 import type { ZodType } from 'zod'
 
@@ -11,6 +11,8 @@ import {
   payments,
   reservations,
   users,
+  sales,
+  products,
 } from '@/db/schema'
 import { db } from '@/lib/db.server'
 import { requireSession } from '@/lib/auth.server'
@@ -229,6 +231,41 @@ export const getDashboardSummary = createServerFn({ method: 'GET' })
       .reduce((sum, p) => sum + p.amountCents, 0)
     const totalCents = cashCents + yapeCents + plinCents + bankTransferCents
 
+    // Rentals vs Kiosk financials
+    const rentalsCents = dayPayments
+      .filter((p) => p.reservationId !== null)
+      .reduce((sum, p) => sum + p.amountCents, 0)
+    const kioskCents = dayPayments
+      .filter((p) => p.saleId !== null)
+      .reduce((sum, p) => sum + p.amountCents, 0)
+
+    // Fetch kiosk sales
+    const daySales = await db
+      .select()
+      .from(sales)
+      .where(
+        and(
+          gte(sales.soldAt, dayStart),
+          lt(sales.soldAt, dayEnd),
+          eq(sales.status, 'completed'),
+        ),
+      )
+    const totalSalesCents = daySales.reduce((sum, s) => sum + s.totalAmountCents, 0)
+    const salesCount = daySales.length
+
+    // Fetch low stock products
+    const lowStockResult = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(products)
+      .where(
+        and(
+          eq(products.isActive, true),
+          sql`${products.currentStock} <= ${products.lowStockThreshold}`
+        )
+      )
+      .get()
+    const lowStockProductsCount = lowStockResult?.count ?? 0
+
     const summary: DashboardSummary = {
       date: data.date,
       reservations: counts,
@@ -264,8 +301,17 @@ export const getDashboardSummary = createServerFn({ method: 'GET' })
           plinCents,
           bankTransferCents,
         },
+        byCategory: {
+          rentalsCents,
+          kioskCents,
+        },
       },
-      inventoryAvailable: false,
+      kioskSales: {
+        count: salesCount,
+        totalCents: totalSalesCents,
+      },
+      lowStockProductsCount,
+      inventoryAvailable: true,
     }
     return { summary }
   })

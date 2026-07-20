@@ -11,6 +11,9 @@ import {
   Clock3,
   Package,
   Wallet,
+  TrendingUp,
+  BarChart3,
+  AlertTriangle,
 } from 'lucide-react'
 import { z } from 'zod'
 
@@ -24,6 +27,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { DashboardLayout } from '@/components/layout/dashboard-layout'
+import { cn } from '@/lib/utils'
 import { getCurrentUser } from '@/features/auth/auth'
 import { getDashboardSummary } from '@/features/dashboard/dashboard'
 
@@ -163,19 +167,19 @@ function Dashboard() {
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <SummaryCard
           icon={CalendarDays}
-          label="Reservas"
+          label="Reservas de Canchas"
           value={String(summary.reservations.total)}
           note={`${summary.reservations.confirmed} confirmadas · ${summary.reservations.pending} pendientes · ${summary.reservations.completed} completadas`}
         />
         <SummaryCard
           icon={Clock3}
-          label="Ocupación"
+          label="Ocupación Horaria"
           value={`${summary.occupancy.percentage}%`}
-          note={`${summary.occupancy.occupiedSlots} de ${summary.occupancy.totalSlots} bloques ocupados`}
+          note={`${summary.occupancy.occupiedSlots} de ${summary.occupancy.totalSlots} bloques reservados`}
         />
         <SummaryCard
           icon={Wallet}
-          label="Ingresos"
+          label="Ingresos Totales"
           value={
             summary.financials
               ? formatMoney(summary.financials.totalCents)
@@ -189,11 +193,223 @@ function Dashboard() {
         />
         <SummaryCard
           icon={Package}
-          label="Inventario"
-          value="Pendiente"
-          note="Disponible al implementar quiosco"
-          muted
+          label="Kiosco e Inventario"
+          value={summary.kioskSales ? formatMoney(summary.kioskSales.totalCents) : 'S/ 0.00'}
+          note={`${summary.kioskSales?.count ?? 0} ventas completadas · ${summary.lowStockProductsCount ?? 0} productos sin stock`}
+          warning={(summary.lowStockProductsCount ?? 0) > 0}
         />
+      </section>
+
+      {/* SECCIÓN DE GRÁFICOS Y MÉTRICAS DETALLADAS */}
+      <section className="mb-6 grid gap-6 md:grid-cols-2">
+        {/* Gráfico 1: Análisis de Ocupación e Ingresos */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <TrendingUp className="size-4 text-primary" />
+              Eficiencia Operativa e Ingresos
+            </CardTitle>
+            <CardDescription>
+              Comparativa de ocupación física de canchas e ingresos monetarios por categoría.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-around p-6">
+            {/* Ocupación Visual (Radial) */}
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative size-32">
+                <svg className="size-full -rotate-90">
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="52"
+                    className="stroke-muted fill-transparent"
+                    strokeWidth="10"
+                  />
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="52"
+                    className="stroke-primary fill-transparent transition-all duration-500"
+                    strokeWidth="10"
+                    strokeDasharray={2 * Math.PI * 52}
+                    strokeDashoffset={2 * Math.PI * 52 * (1 - summary.occupancy.percentage / 100)}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold text-foreground tabular-nums">
+                    {summary.occupancy.percentage}%
+                  </span>
+                  <span className="text-[0.65rem] font-medium text-muted-foreground uppercase">
+                    Ocupado
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs font-semibold text-muted-foreground text-center">
+                Ocupación de Canchas
+              </p>
+            </div>
+
+            {/* Categorías (Alquileres vs Kiosco) */}
+            <div className="flex-1 max-w-[260px] space-y-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-medium">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span className="size-2.5 rounded-full bg-primary" />
+                    Alquiler de Canchas
+                  </span>
+                  <span className="font-bold">
+                    {formatMoney(summary.financials?.byCategory?.rentalsCents ?? 0)}
+                  </span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-primary"
+                    style={{
+                      width: `${
+                        summary.financials?.totalCents
+                          ? Math.round(
+                              ((summary.financials.byCategory?.rentalsCents ?? 0) /
+                                summary.financials.totalCents) *
+                                100,
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-medium">
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <span className="size-2.5 rounded-full bg-emerald-500" />
+                    Ventas del Kiosco
+                  </span>
+                  <span className="font-bold">
+                    {formatMoney(summary.financials?.byCategory?.kioskCents ?? 0)}
+                  </span>
+                </div>
+                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500"
+                    style={{
+                      width: `${
+                        summary.financials?.totalCents
+                          ? Math.round(
+                              ((summary.financials.byCategory?.kioskCents ?? 0) /
+                                summary.financials.totalCents) *
+                                100,
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {summary.lowStockProductsCount && summary.lowStockProductsCount > 0 ? (
+                <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 p-2 text-xs text-amber-600 dark:text-amber-500 mt-2">
+                  <AlertTriangle className="size-4 shrink-0 text-amber-500" />
+                  <span>
+                    Hay <strong>{summary.lowStockProductsCount}</strong> productos con stock crítico en el Kiosco.
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Gráfico 2: Métodos de Pago Distribución */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <BarChart3 className="size-4 text-primary" />
+              Distribución de Métodos de Pago
+            </CardTitle>
+            <CardDescription>
+              Preferencia de pago y recaudación para el día de hoy.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-6 flex flex-col justify-center h-[160px] sm:h-full gap-4">
+            {summary.financials && summary.financials.totalCents > 0 ? (() => {
+              const total = summary.financials.totalCents
+              const cash = summary.financials.byMethod.cashCents
+              const yape = summary.financials.byMethod.yapeCents
+              const plin = summary.financials.byMethod.plinCents
+              const trans = summary.financials.byMethod.bankTransferCents
+
+              const pCash = Math.round((cash / total) * 100)
+              const pYape = Math.round((yape / total) * 100)
+              const pPlin = Math.round((plin / total) * 100)
+              const pTrans = 100 - pCash - pYape - pPlin
+
+              return (
+                <div className="space-y-4">
+                  {/* Segmented bar chart */}
+                  <div className="h-5 w-full rounded-md overflow-hidden flex bg-muted">
+                    {cash > 0 && (
+                      <div
+                        className="h-full bg-emerald-500 transition-all"
+                        style={{ width: `${pCash}%` }}
+                        title={`Efectivo: ${pCash}%`}
+                      />
+                    )}
+                    {yape > 0 && (
+                      <div
+                        className="h-full bg-purple-500 transition-all"
+                        style={{ width: `${pYape}%` }}
+                        title={`Yape: ${pYape}%`}
+                      />
+                    )}
+                    {plin > 0 && (
+                      <div
+                        className="h-full bg-cyan-500 transition-all"
+                        style={{ width: `${pPlin}%` }}
+                        title={`Plin: ${pPlin}%`}
+                      />
+                    )}
+                    {trans > 0 && (
+                      <div
+                        className="h-full bg-amber-500 transition-all"
+                        style={{ width: `${pTrans}%` }}
+                        title={`Transferencia: ${pTrans}%`}
+                      />
+                    )}
+                  </div>
+
+                  {/* Legend Grid */}
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <div className="flex flex-col border-l-2 border-emerald-500 pl-2">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Efectivo</span>
+                      <span className="text-xs font-bold">{pCash}%</span>
+                      <span className="text-[10px] text-muted-foreground">{formatMoney(cash)}</span>
+                    </div>
+                    <div className="flex flex-col border-l-2 border-purple-500 pl-2">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Yape</span>
+                      <span className="text-xs font-bold">{pYape}%</span>
+                      <span className="text-[10px] text-muted-foreground">{formatMoney(yape)}</span>
+                    </div>
+                    <div className="flex flex-col border-l-2 border-cyan-500 pl-2">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Plin</span>
+                      <span className="text-xs font-bold">{pPlin}%</span>
+                      <span className="text-[10px] text-muted-foreground">{formatMoney(plin)}</span>
+                    </div>
+                    <div className="flex flex-col border-l-2 border-amber-500 pl-2">
+                      <span className="text-[10px] text-muted-foreground uppercase font-semibold">Transferencia</span>
+                      <span className="text-xs font-bold">{pTrans}%</span>
+                      <span className="text-[10px] text-muted-foreground">{formatMoney(trans)}</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })() : (
+              <div className="text-center py-6 text-sm text-muted-foreground border border-dashed rounded-lg bg-muted/10">
+                No hay transacciones ni cobros registrados para hoy.
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
@@ -303,21 +519,31 @@ function SummaryCard({
   value,
   note,
   muted = false,
+  warning = false,
 }: {
   icon: typeof CalendarDays
   label: string
   value: string
   note: string
   muted?: boolean
+  warning?: boolean
 }) {
   return (
-    <Card>
-      <CardHeader>
+    <Card className={cn(warning && "border-amber-500/35 bg-amber-500/5")}>
+      <CardHeader className="pb-2">
         <div className="flex items-start justify-between">
-          <span className="grid size-10 place-items-center rounded-full bg-primary/10 text-primary">
+          <span className={cn(
+            "grid size-10 place-items-center rounded-full text-primary",
+            warning ? "bg-amber-500/10 text-amber-500" : "bg-primary/10"
+          )}>
             <Icon className="size-5" aria-hidden />
           </span>
           {muted && <Badge variant="secondary">En preparación</Badge>}
+          {warning && (
+            <Badge className="bg-amber-500 text-white hover:bg-amber-600 border-transparent text-[10px] py-0.5 px-1.5 font-bold">
+              Stock Crítico
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent>

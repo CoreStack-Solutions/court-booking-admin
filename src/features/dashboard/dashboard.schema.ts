@@ -51,6 +51,15 @@ export type DashboardSummary = {
       plinCents: number
       bankTransferCents: number
     }
+    byCategory?: {
+      rentalsCents: number
+      kioskCents: number
+    }
   }
+  kioskSales?: {
+    count: number
+    totalCents: number
+  }
+  lowStockProductsCount?: number
   inventoryAvailable: boolean
 }
