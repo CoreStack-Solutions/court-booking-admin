@@ -29,34 +29,47 @@ import { cn } from '@/lib/utils'
 import { logout } from '@/features/auth/auth'
 import type { SafeUser } from '@/features/auth/auth.schema'
 
-const navSections = [
+interface NavItem {
+  label: string
+  icon: React.ComponentType<any>
+  href: '/' | '/calendar' | '/reservations' | '/courts' | '/rates' | '/customers' | '/reports' | '/kiosk' | '/inventory'
+  badge?: string
+  adminOnly?: boolean
+}
+
+interface NavSection {
+  title: string
+  items: NavItem[]
+}
+
+const navSections: NavSection[] = [
   {
     title: 'Negocio Core',
     items: [
-      { label: 'Resumen', icon: LayoutDashboard, href: '/' as const },
+      { label: 'Resumen', icon: LayoutDashboard, href: '/' },
       {
         label: 'Calendario',
         icon: CalendarDays,
         badge: '12',
-        href: '/calendar' as const,
+        href: '/calendar',
       },
-      { label: 'Reservas', icon: CalendarDays, href: '/reservations' as const },
-      { label: 'Canchas', icon: MapPin, href: '/courts' as const },
+      { label: 'Reservas', icon: CalendarDays, href: '/reservations' },
+      { label: 'Canchas', icon: MapPin, href: '/courts' },
       {
         label: 'Tarifas',
         icon: Clock3,
-        href: '/rates' as const,
+        href: '/rates',
         adminOnly: true,
       },
-      { label: 'Clientes', icon: Users, href: '/customers' as const },
-      { label: 'Caja y reportes', icon: BarChart3, href: '/reports' as const },
+      { label: 'Clientes', icon: Users, href: '/customers' },
+      { label: 'Caja y reportes', icon: BarChart3, href: '/reports' },
     ],
   },
   {
     title: 'Quiosco e Inventario',
     items: [
-      { label: 'Quiosco', icon: Store, href: undefined },
-      { label: 'Inventario', icon: Package, badge: '3', href: undefined },
+      { label: 'Quiosco', icon: Store, href: '/kiosk' },
+      { label: 'Inventario', icon: Package, href: '/inventory' },
     ],
   },
 ]
