@@ -86,6 +86,7 @@ function CalendarPage() {
   const [availability, setAvailability] = useState<CourtAvailability[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedCourtId, setSelectedCourtId] = useState<string>('all')
   const requestId = useRef(0)
 
   async function loadAvailability(selectedDate: string) {
@@ -179,12 +180,44 @@ function CalendarPage() {
         </div>
       </section>
 
-      <div className="mb-5 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-        <Badge variant="success">Disponible</Badge>
-        <Badge variant="secondary">No disponible</Badge>
-        <span className="ml-1">
-          Las franjas se muestran en bloques de 30 minutos.
+      <div className="mb-5 flex flex-wrap items-center gap-3 text-sm">
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Badge variant="success" className="bg-transparent border border-dashed border-muted-foreground/30 text-muted-foreground font-normal">Disponible</Badge>
+        </div>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary font-normal">Reservado</Badge>
+        </div>
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          <Badge variant="secondary" className="bg-muted text-muted-foreground/60 border-transparent font-normal">No disponible / Pasado</Badge>
+        </div>
+        <span className="hidden sm:inline text-muted-foreground/60">
+          · Bloques de 30 minutos
         </span>
+      </div>
+
+      {/* Selector de cancha para móviles */}
+      <div className="mb-4 flex gap-1 overflow-x-auto pb-1 lg:hidden">
+        <Button
+          variant={selectedCourtId === 'all' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setSelectedCourtId('all')}
+        >
+          Todas
+        </Button>
+        {visibleCourts.map((court) => (
+          <Button
+            key={court.id}
+            variant={selectedCourtId === court.id ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSelectedCourtId(court.id)}
+            style={{
+              borderColor: selectedCourtId === court.id ? undefined : court.color,
+              color: selectedCourtId === court.id ? undefined : court.color,
+            }}
+          >
+            {court.name}
+          </Button>
+        ))}
       </div>
 
       {error && (
@@ -214,148 +247,166 @@ function CalendarPage() {
         </Card>
       )}
 
-      {!error && visibleCourts.length > 0 && (
-        <Card className="overflow-hidden">
-          <CardContent className="overflow-x-auto p-0">
-            <div
-              className="min-w-[720px]"
-              role={showTableSemantics ? 'table' : undefined}
-              aria-label={
-                showTableSemantics ? 'Disponibilidad de canchas' : undefined
-              }
-            >
+      {!error && visibleCourts.length > 0 && (() => {
+        const courtsToRender = selectedCourtId === 'all'
+          ? visibleCourts
+          : visibleCourts.filter(c => c.id === selectedCourtId)
+
+        return (
+          <Card className="overflow-hidden shadow-sm">
+            <CardContent className="overflow-x-auto p-0">
               <div
-                role={showTableSemantics ? 'row' : undefined}
-                className="grid grid-cols-[5.5rem_repeat(var(--court-count),minmax(10rem,1fr))] border-b bg-muted/30"
-                style={
-                  {
-                    '--court-count': visibleCourts.length,
-                  } as React.CSSProperties
+                className="min-w-[720px] lg:min-w-0"
+                role={showTableSemantics ? 'table' : undefined}
+                aria-label={
+                  showTableSemantics ? 'Disponibilidad de canchas' : undefined
                 }
               >
                 <div
-                  role={showTableSemantics ? 'columnheader' : undefined}
-                  className="border-r p-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                  role={showTableSemantics ? 'row' : undefined}
+                  className="grid grid-cols-[5.5rem_repeat(var(--court-count),minmax(10rem,1fr))] border-b bg-muted/20"
+                  style={
+                    {
+                      '--court-count': courtsToRender.length,
+                    } as React.CSSProperties
+                  }
                 >
-                  Hora
-                </div>
-                {visibleCourts.map((court) => (
                   <div
                     role={showTableSemantics ? 'columnheader' : undefined}
-                    key={court.id}
-                    className="border-r p-3 last:border-r-0"
+                    className="border-r p-4 text-xs font-bold uppercase tracking-wider text-muted-foreground/75 flex items-center justify-center bg-muted/10"
                   >
-                    <p className="font-semibold">{court.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {court.status === 'maintenance'
-                        ? 'Mantenimiento'
-                        : 'Operativa'}
-                    </p>
+                    Hora
                   </div>
-                ))}
-              </div>
-
-              {loading ? (
-                <div className="flex min-h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
-                  <RefreshCw className="size-4 animate-spin" aria-hidden />
-                  Cargando disponibilidad…
-                </div>
-              ) : timeLabels.length === 0 ? (
-                <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground">
-                  <Clock3 className="size-5" aria-hidden />
-                  No hay horario configurado para esta fecha.
-                </div>
-              ) : (
-                timeLabels.map((time) => (
-                  <div
-                    role={showTableSemantics ? 'row' : undefined}
-                    key={time}
-                    className="grid grid-cols-[5.5rem_repeat(var(--court-count),minmax(10rem,1fr))] border-b last:border-b-0"
-                    style={
-                      {
-                        '--court-count': visibleCourts.length,
-                      } as React.CSSProperties
-                    }
-                  >
+                  {courtsToRender.map((court) => (
                     <div
-                      role={showTableSemantics ? 'rowheader' : undefined}
-                      className="border-r p-3 text-sm font-medium text-muted-foreground"
+                      role={showTableSemantics ? 'columnheader' : undefined}
+                      key={court.id}
+                      className="border-r p-3 last:border-r-0 flex flex-col justify-center"
                     >
-                      {time}
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="size-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: court.color }}
+                        />
+                        <p className="font-semibold text-sm">{court.name}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5 pl-4">
+                        {court.status === 'maintenance'
+                          ? 'Mantenimiento'
+                          : 'Operativa'}
+                      </p>
                     </div>
-                    {visibleCourts.map((court) => {
-                      const result = availability.find(
-                        (item) => item.court.id === court.id,
-                      )
-                      const block = result?.blocks.find(
-                        (item) => item.startsAt === time,
-                      )
-                      const available = block?.available ?? false
-                      const blockStart = new Date(
-                        `${date}T${time}:00-05:00`,
-                      ).getTime()
-                      const isPast = blockStart <= Date.now()
-                      return (
-                        <div
-                          role={showTableSemantics ? 'cell' : undefined}
-                          key={court.id}
-                          className="border-r p-2 last:border-r-0"
-                        >
-                          {block?.reservationId ? (
-                            <Link
-                              to="/reservations/$reservationId"
-                              params={{ reservationId: block.reservationId }}
-                              aria-label={`${court.name}, ${time}: Reserva de ${block.reservationCustomerName ?? 'cliente'}`}
-                              className="flex min-h-12 flex-col items-center justify-center rounded-md border border-primary/30 bg-primary/10 px-2 text-center text-xs font-medium text-primary hover:bg-primary/20"
-                            >
-                              <span>Reservada</span>
-                              {block.reservationCustomerName && (
-                                <span className="max-w-full truncate text-[0.7rem] font-normal">
-                                  {block.reservationCustomerName}
-                                </span>
-                              )}
-                            </Link>
-                          ) : available && !isPast ? (
-                            user.role === 'viewer' ? (
-                              <div
-                                aria-label={`${court.name}, ${time}: Disponible`}
-                                className="flex min-h-12 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-xs font-medium text-primary"
-                              >
-                                Disponible
-                              </div>
-                            ) : (
-                              <Link
-                                to="/reservations/new"
-                                search={{
-                                  courtId: court.id,
-                                  date,
-                                  startsAt: time,
-                                  endsAt: block?.endsAt ?? time,
-                                }}
-                                aria-label={`${court.name}, ${time}: Disponible. Crear reserva`}
-                                className="flex min-h-12 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-xs font-medium text-primary hover:bg-primary/20"
-                              >
-                                Disponible
-                              </Link>
-                            )
-                          ) : (
-                            <div
-                              aria-label={`${court.name}, ${time}: ${isPast ? 'Pasado' : 'No disponible'}`}
-                              className="flex min-h-12 items-center justify-center rounded-md border border-border bg-muted/50 text-xs text-muted-foreground"
-                            >
-                              {isPast ? 'Pasado' : 'No disponible'}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
+                  ))}
+                </div>
+
+                {loading ? (
+                  <div className="flex min-h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <RefreshCw className="size-4 animate-spin" aria-hidden />
+                    Cargando disponibilidad…
                   </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ) : timeLabels.length === 0 ? (
+                  <div className="flex min-h-64 flex-col items-center justify-center gap-2 px-6 text-center text-sm text-muted-foreground">
+                    <Clock3 className="size-5" aria-hidden />
+                    No hay horario configurado para esta fecha.
+                  </div>
+                ) : (
+                  timeLabels.map((time) => (
+                    <div
+                      role={showTableSemantics ? 'row' : undefined}
+                      key={time}
+                      className="grid grid-cols-[5.5rem_repeat(var(--court-count),minmax(10rem,1fr))] border-b last:border-b-0 hover:bg-muted/5 transition-colors"
+                      style={
+                        {
+                          '--court-count': courtsToRender.length,
+                        } as React.CSSProperties
+                      }
+                    >
+                      <div
+                        role={showTableSemantics ? 'rowheader' : undefined}
+                        className="border-r p-3 text-sm font-semibold text-muted-foreground/80 flex items-center justify-center bg-muted/5"
+                      >
+                        {time}
+                      </div>
+                      {courtsToRender.map((court) => {
+                        const result = availability.find(
+                          (item) => item.court.id === court.id,
+                        )
+                        const block = result?.blocks.find(
+                          (item) => item.startsAt === time,
+                        )
+                        const available = block?.available ?? false
+                        const blockStart = new Date(
+                          `${date}T${time}:00-05:00`,
+                        ).getTime()
+                        const isPast = blockStart <= Date.now()
+                        return (
+                          <div
+                            role={showTableSemantics ? 'cell' : undefined}
+                            key={court.id}
+                            className="border-r p-2 last:border-r-0"
+                          >
+                            {block?.reservationId ? (
+                              <Link
+                                to="/reservations/$reservationId"
+                                params={{ reservationId: block.reservationId }}
+                                aria-label={`${court.name}, ${time}: Reserva de ${block.reservationCustomerName ?? 'cliente'}`}
+                                className="flex min-h-[3.25rem] flex-col items-center justify-center rounded-lg border px-2 py-1 text-center transition-all hover:brightness-95 hover:shadow-sm"
+                                style={{
+                                  backgroundColor: `${court.color}15`,
+                                  borderColor: `${court.color}35`,
+                                  color: court.color,
+                                }}
+                              >
+                                <span className="font-bold text-[0.72rem] tracking-wide uppercase">Reservada</span>
+                                {block.reservationCustomerName && (
+                                  <span className="max-w-full truncate text-[0.68rem] font-normal opacity-90">
+                                    {block.reservationCustomerName}
+                                  </span>
+                                )}
+                              </Link>
+                            ) : available && !isPast ? (
+                              user.role === 'viewer' ? (
+                                <div
+                                  aria-label={`${court.name}, ${time}: Disponible`}
+                                  className="flex min-h-[3.25rem] items-center justify-center rounded-lg border border-dashed border-muted-foreground/20 bg-transparent text-[0.72rem] font-medium text-muted-foreground/40"
+                                >
+                                  Disponible
+                                </div>
+                              ) : (
+                                <Link
+                                  to="/reservations/new"
+                                  search={{
+                                    courtId: court.id,
+                                    date,
+                                    startsAt: time,
+                                    endsAt: block?.endsAt ?? time,
+                                  }}
+                                  aria-label={`${court.name}, ${time}: Disponible. Crear reserva`}
+                                  className="group flex min-h-[3.25rem] items-center justify-center rounded-lg border border-dashed border-muted-foreground/20 bg-transparent text-[0.72rem] font-medium text-muted-foreground/40 hover:text-green-600 hover:bg-green-500/10 hover:border-solid hover:border-green-500/30 transition-all cursor-pointer"
+                                >
+                                  <span className="hidden group-hover:inline font-bold">+ Reservar</span>
+                                  <span className="inline group-hover:hidden font-normal">Disponible</span>
+                                </Link>
+                              )
+                            ) : (
+                              <div
+                                aria-label={`${court.name}, ${time}: ${isPast ? 'Pasado' : 'No disponible'}`}
+                                className="flex min-h-[3.25rem] items-center justify-center rounded-lg border border-border bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(100,100,100,0.03)_6px,rgba(100,100,100,0.03)_12px)] bg-muted/40 text-[0.7rem] text-muted-foreground/40 select-none cursor-not-allowed"
+                              >
+                                {isPast ? 'Pasado' : 'No disponible'}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })()}
     </DashboardLayout>
   )
 }
