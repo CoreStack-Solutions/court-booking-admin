@@ -3,6 +3,7 @@ import { createFileRoute, useNavigate, Link } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { InputPassword } from '@/components/ui/input-password'
 import { Label } from '@/components/ui/label'
@@ -88,7 +89,7 @@ function LoginPage() {
 
       {/* Panel del formulario */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8">
-        <div className="w-full max-w-md bg-card rounded-2xl shadow-sm border border-border p-8 sm:p-10">
+        <Card className="w-full max-w-md rounded-2xl p-8 sm:p-10">
           <div className="text-center mb-8 space-y-4">
             <div className="flex justify-center">
               <img src="/images/canchasapp_logo.png" alt="CanchasApp Logo" className="h-16 w-auto object-contain" />
@@ -196,7 +197,7 @@ function LoginPage() {
               © {new Date().getFullYear()} CanchasApp. Todos los derechos reservados.
             </p>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   )
